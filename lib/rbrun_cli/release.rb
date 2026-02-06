@@ -160,7 +160,7 @@ module RbrunCli
       rescue RbrunCore::Error::Configuration => e
         formatter.error("Configuration error: #{e.message}")
         exit 1
-      rescue RbrunCore::HttpErrors::ApiError => e
+      rescue RbrunCore::Error::Api => e
         formatter.error("API error: #{e.message}")
         exit 1
       rescue RbrunCore::Clients::Ssh::CommandError => e

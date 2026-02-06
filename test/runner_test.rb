@@ -283,7 +283,7 @@ class RunnerTest < Minitest::Test
             "provider" => "hetzner",
             "api_key" => "test-key",
             "ssh_key_path" => TEST_SSH_KEY_PATH,
-            "server" => "cpx11"
+            "master" => { "instance_type" => "cpx11" }
           }
         ))
         yield config_path, dir

@@ -8,9 +8,9 @@ PATH
       ed25519 (>= 1.2)
       faraday (~> 2.0)
       faraday-multipart (~> 1.0)
-      net-scp (~> 4.0)
-      net-ssh (~> 7.0)
       sshkey (~> 3.0)
+      sshkit (~> 1.23)
+      zeitwerk (~> 2.6)
 
 PATH
   remote: .
@@ -79,7 +79,10 @@ GEM
       uri (>= 0.11.1)
     net-scp (4.1.0)
       net-ssh (>= 2.6.5, < 8.0.0)
+    net-sftp (4.0.0)
+      net-ssh (>= 5.0.0, < 8.0.0)
     net-ssh (7.3.0)
+    ostruct (0.6.3)
     parallel (1.27.0)
     parser (3.3.10.1)
       ast (~> 2.4.1)
@@ -125,6 +128,13 @@ GEM
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
     sshkey (3.0.0)
+    sshkit (1.25.0)
+      base64
+      logger
+      net-scp (>= 1.1.2)
+      net-sftp (>= 2.1.2)
+      net-ssh (>= 2.8.0)
+      ostruct
     thor (1.5.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
@@ -132,6 +142,7 @@ GEM
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)
     uri (1.1.1)
+    zeitwerk (2.7.4)
 
 PLATFORMS
   arm64-darwin-24

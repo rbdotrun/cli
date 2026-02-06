@@ -187,7 +187,7 @@ class ReleaseTest < Minitest::Test
   def test_api_error_exits_1
     runner = Object.new
     runner.define_singleton_method(:load_config) do
-      raise RbrunCore::HttpErrors::ApiError.new("[401] Unauthorized", status: 401)
+      raise RbrunCore::Error::Api.new("[401] Unauthorized", status: 401)
     end
 
     release = RbrunCli::Release.new([], { config: "test.yaml" })
