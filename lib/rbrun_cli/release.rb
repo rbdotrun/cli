@@ -157,7 +157,7 @@ module RbrunCli
 
       def with_error_handling
         yield
-      rescue RbrunCore::ConfigurationError => e
+      rescue RbrunCore::Error::Configuration => e
         formatter.error("Configuration error: #{e.message}")
         exit 1
       rescue RbrunCore::HttpErrors::ApiError => e
@@ -166,7 +166,7 @@ module RbrunCli
       rescue RbrunCore::Clients::Ssh::CommandError => e
         formatter.error("Command failed (exit #{e.exit_code}): #{e.output}")
         exit 1
-      rescue RbrunCore::Error => e
+      rescue RbrunCore::Error::Standard => e
         formatter.error(e.message)
         exit 1
       end

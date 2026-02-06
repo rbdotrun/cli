@@ -49,7 +49,7 @@ class RunnerTest < Minitest::Test
       compute_client = config.compute_config.client
       compute_client.define_singleton_method(:list_servers) { [] }
 
-      error = assert_raises(RbrunCore::Error) do
+      error = assert_raises(RbrunCore::Error::Standard) do
         runner.find_server(config)
       end
       assert_includes error.message, "No server found"
@@ -197,7 +197,7 @@ class RunnerTest < Minitest::Test
   end
 
   def test_env_file_missing_raises
-    assert_raises(RbrunCore::ConfigurationError) do
+    assert_raises(RbrunCore::Error::Configuration) do
       RbrunCli::Runner.new(config_path: "/dev/null", env_file: "/nonexistent/.env")
     end
   end

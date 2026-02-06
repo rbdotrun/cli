@@ -61,7 +61,7 @@ module RbrunCli
       server = servers.find { |s| s.name == server_name } ||
                servers.find { |s| s.name.start_with?(prefix) }
 
-      raise RbrunCore::Error, "No server found matching #{server_name}" unless server
+      raise RbrunCore::Error::Standard, "No server found matching #{server_name}" unless server
 
       server
     end
@@ -95,7 +95,7 @@ module RbrunCli
         else
           File.expand_path(path)
         end
-        raise RbrunCore::ConfigurationError, "Env file not found: #{abs_path}" unless File.exist?(abs_path)
+        raise RbrunCore::Error::Configuration, "Env file not found: #{abs_path}" unless File.exist?(abs_path)
 
         File.readlines(abs_path).each do |line|
           line = line.strip
@@ -129,7 +129,7 @@ module RbrunCli
 
       def detect_branch
         RbrunCore::LocalGit.current_branch
-      rescue RbrunCore::Error
+      rescue RbrunCore::Error::Standard
         nil
       end
 
@@ -138,7 +138,7 @@ module RbrunCli
         case target
         when :sandbox
           # Sandbox prefix requires a slug — handled at call site
-          raise RbrunCore::Error, "Cannot determine prefix for sandbox without slug"
+          raise RbrunCore::Error::Standard, "Cannot determine prefix for sandbox without slug"
         else
           RbrunCore::Naming.release_prefix(config.git_config.app_name, target)
         end
@@ -148,7 +148,7 @@ module RbrunCli
         # Default: {folder}/deploy.log, override with explicit log_file
         path = log_file || File.join(@folder || ".", "deploy.log")
         abs_path = File.expand_path(path)
-        RbrunCore::Logger.new(file: abs_path)
+        Logger.new(file: abs_path)
       end
   end
 end

@@ -226,11 +226,11 @@ class CiIntegration
       servers_after = list_servers
 
       if servers_before.map(&:id).sort != servers_after.map(&:id).sort
-        raise RbrunCore::Error, "Idempotency failed: servers changed"
+        raise RbrunCore::Error::Standard, "Idempotency failed: servers changed"
       end
 
       if @ctx.new_servers.any?
-        raise RbrunCore::Error, "Idempotency failed: new_servers not empty: #{@ctx.new_servers.to_a}"
+        raise RbrunCore::Error::Standard, "Idempotency failed: new_servers not empty: #{@ctx.new_servers.to_a}"
       end
 
       verify_app_responds!
@@ -398,7 +398,7 @@ class CiIntegration
       actual = topology.nodes.count
       return if actual == expected
 
-      raise RbrunCore::Error, "Expected #{expected} nodes, got #{actual}"
+      raise RbrunCore::Error::Standard, "Expected #{expected} nodes, got #{actual}"
     end
 
     def list_servers
@@ -422,7 +422,7 @@ class CiIntegration
       log("[verify] Log count: #{@last_log_count} -> #{new_count}")
 
       if new_count <= @last_log_count
-        raise RbrunCore::Error, "Log count did not increase: was #{@last_log_count}, now #{new_count}"
+        raise RbrunCore::Error::Standard, "Log count did not increase: was #{@last_log_count}, now #{new_count}"
       end
 
       @last_log_count = new_count
@@ -453,7 +453,7 @@ class CiIntegration
         result = kubectl.exec("#{prefix}-web", "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/")
         code = result[:output].strip.delete("'")
         log("[verify] Request #{i + 1}: HTTP #{code}")
-        raise RbrunCore::Error, "HTTP request failed: #{code}" unless code == "200"
+        raise RbrunCore::Error::Standard, "HTTP request failed: #{code}" unless code == "200"
         sleep 0.5
       end
     end

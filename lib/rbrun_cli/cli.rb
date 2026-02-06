@@ -33,10 +33,10 @@ module RbrunCli
         compute_inventory:,
         cloudflare_inventory:
       )
-    rescue RbrunCore::ConfigurationError => e
+    rescue RbrunCore::Error::Configuration => e
       formatter.error(e.message)
       exit 1
-    rescue RbrunCore::Error => e
+    rescue RbrunCore::Error::Standard => e
       formatter.error(e.message)
       exit 1
     end
