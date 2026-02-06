@@ -1,12 +1,20 @@
 # frozen_string_literal: true
 
+require "zeitwerk"
+
+module RbrunCli
+  class << self
+    def loader
+      @loader ||= Zeitwerk::Loader.for_gem
+    end
+  end
+end
+
+# External dependencies
 require "rbrun_core"
 require "thor"
+require "tty-spinner"
 
-require_relative "rbrun_cli/version"
-require_relative "rbrun_cli/logger"
-require_relative "rbrun_cli/formatter"
-require_relative "rbrun_cli/runner"
-require_relative "rbrun_cli/release"
-require_relative "rbrun_cli/sandbox"
-require_relative "rbrun_cli/cli"
+# Setup and eager load
+RbrunCli.loader.setup
+RbrunCli.loader.eager_load

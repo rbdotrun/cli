@@ -31,11 +31,18 @@ module RbrunCli
       ctx = build_context(target:, slug:)
       load_ssh_keys!(ctx)
 
-      command = command_class.new(
-        ctx,
+      opts = {
         logger: @logger,
         on_state_change: ->(state) { @formatter.state_change(state) }
-      )
+      }
+
+      # Add rollout progress for deploy commands
+      if command_class == RbrunCore::Commands::Deploy
+        rollout_progress = RolloutProgress.new
+        opts[:on_rollout_progress] = ->(event, data) { rollout_progress.call(event, data) }
+      end
+
+      command = command_class.new(ctx, **opts)
       command.run
 
       @formatter.summary(ctx)

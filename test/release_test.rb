@@ -279,7 +279,7 @@ class ReleaseTest < Minitest::Test
       begin
         original_stderr = $stderr
         $stderr = output
-        RbrunCli::CLI.start(args)
+        RbrunCli::Cli.start(args)
       rescue SystemExit
         # Expected
       ensure

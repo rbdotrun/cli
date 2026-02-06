@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module RbrunCli
-  class CLI < Thor
+  class Cli < Thor
     def self.exit_on_failure? = true
 
     desc "release SUBCOMMAND", "Manage production/staging releases"

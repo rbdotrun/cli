@@ -3,4 +3,4 @@
 
 require "rbrun_cli"
 
-RbrunCli::CLI.start(ARGV)
+RbrunCli::Cli.start(ARGV)
