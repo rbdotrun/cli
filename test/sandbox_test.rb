@@ -87,7 +87,7 @@ class SandboxTest < Minitest::Test
     runner.define_singleton_method(:build_operational_context) { |**_| ctx }
 
     kubectl = Minitest::Mock.new
-    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, ["rbrun-sandbox-ab12cd-web", "ls"])
+    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, [ "rbrun-sandbox-ab12cd-web", "ls" ])
     runner.define_singleton_method(:build_kubectl) { |_| kubectl }
 
     sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd", process: "web" })
@@ -106,7 +106,7 @@ class SandboxTest < Minitest::Test
     runner.define_singleton_method(:build_operational_context) { |**_| ctx }
 
     kubectl = Minitest::Mock.new
-    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, ["rbrun-sandbox-ab12cd-redis", "ping"])
+    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, [ "rbrun-sandbox-ab12cd-redis", "ping" ])
     runner.define_singleton_method(:build_kubectl) { |_| kubectl }
 
     sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd", service: "redis", process: "web" })
@@ -130,6 +130,7 @@ class SandboxTest < Minitest::Test
     sandbox.instance_variable_set(:@runner, runner)
 
     exec_args = intercept_kernel_exec { sandbox.ssh }
+
     assert_includes exec_args, "deploy@10.0.0.1"
   end
 
@@ -168,6 +169,7 @@ class SandboxTest < Minitest::Test
 
     exec_args = intercept_kernel_exec { sandbox.sql }
     cmd = exec_args.join(" ")
+
     assert_includes cmd, "rbrun-sandbox-ab12cd-postgres"
     assert_includes cmd, "deploy@1.2.3.4"
   end
@@ -183,7 +185,7 @@ class SandboxTest < Minitest::Test
     runner.define_singleton_method(:build_operational_context) { |**_| ctx }
 
     kubectl = Minitest::Mock.new
-    kubectl.expect(:logs, { output: "sandbox logs", exit_code: 0 }, ["rbrun-sandbox-ab12cd-web"], tail: 100)
+    kubectl.expect(:logs, { output: "sandbox logs", exit_code: 0 }, [ "rbrun-sandbox-ab12cd-web" ], tail: 100)
     runner.define_singleton_method(:build_kubectl) { |_| kubectl }
 
     sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd", process: "web", follow: false, tail: 100 })
@@ -191,6 +193,7 @@ class SandboxTest < Minitest::Test
 
     out = with_captured_stdout { sandbox.logs }
     kubectl.verify
+
     assert_includes out, "sandbox logs"
   end
 
@@ -207,6 +210,7 @@ class SandboxTest < Minitest::Test
 
     exec_args = intercept_kernel_exec { sandbox.logs }
     cmd = exec_args.join(" ")
+
     assert_includes cmd, "rbrun-sandbox-ab12cd-web"
     assert_includes cmd, "-f"
   end

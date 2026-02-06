@@ -26,7 +26,7 @@ class ReleaseTest < Minitest::Test
 
   def test_exec_targets_service_when_service_option
     release, kubectl = build_release_with_kubectl(service: "redis", process: "web")
-    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, ["test-repo-production-redis", "echo hi"])
+    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, [ "test-repo-production-redis", "echo hi" ])
 
     with_captured_stdout { release.exec("echo hi") }
     kubectl.verify
@@ -34,18 +34,20 @@ class ReleaseTest < Minitest::Test
 
   def test_exec_defaults_to_web_process
     release, kubectl = build_release_with_kubectl(process: "web")
-    kubectl.expect(:exec, { output: "done", exit_code: 0 }, ["test-repo-production-web", "rails c"])
+    kubectl.expect(:exec, { output: "done", exit_code: 0 }, [ "test-repo-production-web", "rails c" ])
 
     out = with_captured_stdout { release.exec("rails c") }
     kubectl.verify
+
     assert_includes out, "done"
   end
 
   def test_exec_output_goes_to_stdout
     release, kubectl = build_release_with_kubectl(process: "web")
-    kubectl.expect(:exec, { output: "line1\nline2", exit_code: 0 }, ["test-repo-production-web", "ls"])
+    kubectl.expect(:exec, { output: "line1\nline2", exit_code: 0 }, [ "test-repo-production-web", "ls" ])
 
     out = with_captured_stdout { release.exec("ls") }
+
     assert_includes out, "line1\nline2"
   end
 
@@ -89,7 +91,7 @@ class ReleaseTest < Minitest::Test
     other = RbrunCore::Clients::Compute::Types::Server.new(
       name: "other-app", public_ipv4: "5.6.7.8", status: "running", instance_type: "cpx11"
     )
-    config.compute_config.client.define_singleton_method(:list_servers) { [matching, other] }
+    config.compute_config.client.define_singleton_method(:list_servers) { [ matching, other ] }
 
     runner = Object.new
     runner.define_singleton_method(:load_config) { config }
@@ -120,6 +122,7 @@ class ReleaseTest < Minitest::Test
     release.instance_variable_set(:@runner, runner)
 
     exec_args = intercept_kernel_exec { release.ssh }
+
     assert_includes exec_args, "deploy@9.8.7.6"
   end
 
@@ -135,6 +138,7 @@ class ReleaseTest < Minitest::Test
     release.instance_variable_set(:@runner, runner)
 
     exec_args = intercept_kernel_exec { release.ssh }
+
     assert_includes exec_args, "-i"
     assert(exec_args.any? { |a| a.include?("id_rsa") || a.include?("ssh") })
   end
@@ -143,10 +147,11 @@ class ReleaseTest < Minitest::Test
 
   def test_logs_non_follow_uses_kubectl
     release, kubectl = build_release_with_kubectl(process: "web", follow: false, tail: 50)
-    kubectl.expect(:logs, { output: "log output", exit_code: 0 }, ["test-repo-production-web"], tail: 50)
+    kubectl.expect(:logs, { output: "log output", exit_code: 0 }, [ "test-repo-production-web" ], tail: 50)
 
     out = with_captured_stdout { release.logs }
     kubectl.verify
+
     assert_includes out, "log output"
   end
 
@@ -163,6 +168,7 @@ class ReleaseTest < Minitest::Test
 
     exec_args = intercept_kernel_exec { release.logs }
     cmd = exec_args.join(" ")
+
     assert_includes cmd, "kubectl logs"
     assert_includes cmd, "-f"
     assert_includes cmd, "test-repo-production-web"
@@ -170,7 +176,7 @@ class ReleaseTest < Minitest::Test
 
   def test_logs_service_overrides_process
     release, kubectl = build_release_with_kubectl(service: "redis", process: "web", follow: false, tail: 100)
-    kubectl.expect(:logs, { output: "redis logs", exit_code: 0 }, ["test-repo-production-redis"], tail: 100)
+    kubectl.expect(:logs, { output: "redis logs", exit_code: 0 }, [ "test-repo-production-redis" ], tail: 100)
 
     with_captured_stdout { release.logs }
     kubectl.verify
@@ -232,7 +238,7 @@ class ReleaseTest < Minitest::Test
       release = RbrunCli::Release.new([], { config: "test.yaml" }.merge(opts))
       release.instance_variable_set(:@runner, runner)
 
-      [release, kubectl]
+      [ release, kubectl ]
     end
 
     def build_release_with_ctx(ctx, **opts)

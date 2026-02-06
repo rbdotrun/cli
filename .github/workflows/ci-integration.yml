@@ -1,0 +1,52 @@
+name: Integration Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *'  # Daily at 4am UTC
+
+env:
+  HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_DOMAIN: ${{ secrets.CLOUDFLARE_DOMAIN }}
+  SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+
+      - name: Clone dummy-rails
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git clone https://${GH_PAT}@github.com/your-org/dummy-rails.git ~/dummy-rails
+          echo "SECRET_KEY_BASE=$SECRET_KEY_BASE" > ~/dummy-rails/.env
+
+      - name: Run integration tests
+        env:
+          CI_APP_PATH: ~/dummy-rails
+          CI_ENV_PATH: ~/dummy-rails/.env
+          SSH_KEY_PATH: ~/.ssh/id_rsa
+        run: bundle exec rake ci:integration
+
+      - name: Cleanup on failure
+        if: failure()
+        run: bundle exec rake ci:cleanup || true

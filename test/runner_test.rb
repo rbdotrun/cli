@@ -66,9 +66,10 @@ class RunnerTest < Minitest::Test
         name: "test-repo-production", public_ipv4: "1.2.3.4", status: "running"
       )
       compute_client = config.compute_config.client
-      compute_client.define_singleton_method(:list_servers) { [server] }
+      compute_client.define_singleton_method(:list_servers) { [ server ] }
 
       found = runner.find_server(config)
+
       assert_equal "1.2.3.4", found.public_ipv4
     end
   end
@@ -86,9 +87,10 @@ class RunnerTest < Minitest::Test
         name: "test-repo-production", public_ipv4: "1.2.3.4", status: "running"
       )
       compute_client = config.compute_config.client
-      compute_client.define_singleton_method(:list_servers) { [master, worker] }
+      compute_client.define_singleton_method(:list_servers) { [ master, worker ] }
 
       found = runner.find_server(config, "worker-1")
+
       assert_equal "5.6.7.8", found.public_ipv4
     end
   end
@@ -136,6 +138,67 @@ class RunnerTest < Minitest::Test
       runner = RbrunCli::Runner.new(config_path: "config.yaml", folder: empty_dir)
 
       assert_raises(Errno::ENOENT) { runner.load_config }
+    end
+  end
+
+  # ── --env-file ──
+
+  def test_env_file_injects_vars_into_env
+    Dir.mktmpdir do |dir|
+      env_path = File.join(dir, ".env")
+      File.write(env_path, "TEST_RBRUN_VAR=hello_world\n")
+
+      RbrunCli::Runner.new(config_path: "/dev/null", env_file: env_path)
+
+      assert_equal "hello_world", ENV["TEST_RBRUN_VAR"]
+    end
+  ensure
+    ENV.delete("TEST_RBRUN_VAR")
+  end
+
+  def test_env_file_strips_quotes
+    Dir.mktmpdir do |dir|
+      env_path = File.join(dir, ".env")
+      File.write(env_path, "TEST_RBRUN_QUOTED=\"some value\"\nTEST_RBRUN_SINGLE='other'\n")
+
+      RbrunCli::Runner.new(config_path: "/dev/null", env_file: env_path)
+
+      assert_equal "some value", ENV["TEST_RBRUN_QUOTED"]
+      assert_equal "other", ENV["TEST_RBRUN_SINGLE"]
+    end
+  ensure
+    ENV.delete("TEST_RBRUN_QUOTED")
+    ENV.delete("TEST_RBRUN_SINGLE")
+  end
+
+  def test_env_file_skips_comments_and_blank_lines
+    Dir.mktmpdir do |dir|
+      env_path = File.join(dir, ".env")
+      File.write(env_path, "# comment\n\nTEST_RBRUN_ONLY=yes\n")
+
+      RbrunCli::Runner.new(config_path: "/dev/null", env_file: env_path)
+
+      assert_equal "yes", ENV["TEST_RBRUN_ONLY"]
+    end
+  ensure
+    ENV.delete("TEST_RBRUN_ONLY")
+  end
+
+  def test_env_file_resolves_relative_to_folder
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, ".env"), "TEST_RBRUN_FOLDER=resolved\n")
+
+      RbrunCli::Runner.new(config_path: "/dev/null", folder: dir, env_file: ".env")
+
+      assert_equal "resolved", ENV["TEST_RBRUN_FOLDER"]
+    end
+  ensure
+    ENV.delete("TEST_RBRUN_FOLDER")
+  end
+
+  def test_env_file_missing_raises
+    assert_raises(RbrunCore::ConfigurationError) do
+      RbrunCli::Runner.new(config_path: "/dev/null", env_file: "/nonexistent/.env")
     end
   end
 
@@ -187,9 +250,10 @@ class RunnerTest < Minitest::Test
       # Stub both load_config and find_server via the runner
       runner.define_singleton_method(:load_config) { config }
       compute_client = config.compute_config.client
-      compute_client.define_singleton_method(:list_servers) { [server] }
+      compute_client.define_singleton_method(:list_servers) { [ server ] }
 
       ctx = runner.build_operational_context
+
       assert_equal "1.2.3.4", ctx.server_ip
       assert_equal TEST_SSH_KEY.private_key, ctx.ssh_private_key
     end
@@ -203,6 +267,7 @@ class RunnerTest < Minitest::Test
       ctx.ssh_private_key = TEST_SSH_KEY.private_key
 
       kubectl = runner.build_kubectl(ctx)
+
       assert_instance_of RbrunCore::Clients::Kubectl, kubectl
     end
   end

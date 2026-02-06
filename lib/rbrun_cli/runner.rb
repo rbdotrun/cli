@@ -2,9 +2,9 @@
 
 module RbrunCli
   class Runner
-    attr_reader :formatter
+    attr_reader :formatter, :logger
 
-    def initialize(config_path:, folder: nil, formatter: nil)
+    def initialize(config_path:, folder: nil, env_file: nil, formatter: nil, log_file: nil)
       @config_path = config_path
       @folder = folder
       @formatter = formatter || Formatter.new
@@ -13,27 +13,33 @@ module RbrunCli
       else
         File.expand_path(@config_path)
       end
+      @logger = build_logger(log_file)
+      load_env_file(env_file) if env_file
     end
 
     def build_context(target:, slug: nil)
       in_folder do
         config = load_and_validate_config
         branch = detect_branch
-        RbrunCore::Context.new(config:, target:, slug:, branch:)
+        ctx = RbrunCore::Context.new(config:, target:, slug:, branch:)
+        ctx.source_folder = @folder ? File.expand_path(@folder) : nil
+        ctx
       end
     end
 
     def execute(command_class, target:, slug: nil)
       ctx = build_context(target:, slug:)
+      load_ssh_keys!(ctx)
 
       command = command_class.new(
         ctx,
-        on_log: ->(category, message) { @formatter.log(category, message) },
+        logger: @logger,
         on_state_change: ->(state) { @formatter.state_change(state) }
       )
       command.run
 
       @formatter.summary(ctx)
+      @logger.close
       ctx
     end
 
@@ -63,14 +69,11 @@ module RbrunCli
     def build_operational_context(target: nil, slug: nil, server: nil)
       config = load_config
       found_server = find_server(config, server)
-
-      ssh_keys = config.compute_config.read_ssh_keys
       target ||= config.target || :production
 
       ctx = RbrunCore::Context.new(config:, target:, slug:)
       ctx.server_ip = found_server.public_ipv4
-      ctx.ssh_private_key = ssh_keys[:private_key]
-      ctx.ssh_public_key = ssh_keys[:public_key]
+      load_ssh_keys!(ctx)
       ctx
     end
 
@@ -79,6 +82,36 @@ module RbrunCli
     end
 
     private
+
+      def load_ssh_keys!(ctx)
+        ssh_keys = ctx.config.compute_config.read_ssh_keys
+        ctx.ssh_private_key = ssh_keys[:private_key]
+        ctx.ssh_public_key = ssh_keys[:public_key]
+      end
+
+      def load_env_file(path)
+        abs_path = if @folder
+          File.expand_path(path, @folder)
+        else
+          File.expand_path(path)
+        end
+        raise RbrunCore::ConfigurationError, "Env file not found: #{abs_path}" unless File.exist?(abs_path)
+
+        File.readlines(abs_path).each do |line|
+          line = line.strip
+          next if line.empty? || line.start_with?("#")
+
+          key, value = line.split("=", 2)
+          next unless key && value
+
+          # Strip optional quotes
+          value = value.strip
+          value = value[1..-2] if (value.start_with?('"') && value.end_with?('"')) ||
+                                  (value.start_with?("'") && value.end_with?("'"))
+
+          ENV[key.strip] = value
+        end
+      end
 
       def in_folder(&block)
         if @folder
@@ -109,6 +142,13 @@ module RbrunCli
         else
           RbrunCore::Naming.release_prefix(config.git_config.app_name, target)
         end
+      end
+
+      def build_logger(log_file)
+        # Default: {folder}/deploy.log, override with explicit log_file
+        path = log_file || File.join(@folder || ".", "deploy.log")
+        abs_path = File.expand_path(path)
+        RbrunCore::Logger.new(file: abs_path)
       end
   end
 end

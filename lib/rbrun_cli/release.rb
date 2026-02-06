@@ -8,6 +8,10 @@ module RbrunCli
                           desc: "Path to YAML config file"
     class_option :folder, type: :string, aliases: "-f",
                           desc: "Working directory for git detection"
+    class_option :env_file, type: :string, aliases: "-e",
+                             desc: "Path to .env file for variable interpolation"
+    class_option :log_file, type: :string, aliases: "-l",
+                             desc: "Log file path (default: {folder}/deploy.log)"
 
     desc "deploy", "Deploy release infrastructure + app"
     def deploy
@@ -109,12 +113,30 @@ module RbrunCli
       end
     end
 
+    desc "topology", "Show cluster topology (nodes, pods, placement)"
+    option :json, type: :boolean, default: false, desc: "Output as JSON"
+    option :server, type: :string, desc: "Server name for multi-server"
+    def topology
+      with_error_handling do
+        ctx = runner.build_operational_context(server: options[:server])
+        topo = RbrunCore::Topology.new(ctx)
+
+        if options[:json]
+          $stdout.puts topo.to_json
+        else
+          formatter.topology(topo.topology_hash)
+        end
+      end
+    end
+
     private
 
       def runner
         @runner ||= Runner.new(
           config_path: options[:config],
           folder: options[:folder],
+          env_file: options[:env_file],
+          log_file: options[:log_file],
           formatter:
         )
       end

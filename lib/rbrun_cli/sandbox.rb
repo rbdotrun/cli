@@ -8,6 +8,10 @@ module RbrunCli
                           desc: "Path to YAML config file"
     class_option :folder, type: :string, aliases: "-f",
                           desc: "Working directory for git detection"
+    class_option :env_file, type: :string, aliases: "-e",
+                             desc: "Path to .env file for variable interpolation"
+    class_option :log_file, type: :string, aliases: "-l",
+                             desc: "Log file path (default: {folder}/deploy.log)"
 
     desc "deploy", "Deploy a development sandbox"
     option :slug, type: :string, desc: "Sandbox slug (auto-generated if omitted)"
@@ -117,6 +121,8 @@ module RbrunCli
         @runner ||= Runner.new(
           config_path: options[:config],
           folder: options[:folder],
+          env_file: options[:env_file],
+          log_file: options[:log_file],
           formatter:
         )
       end

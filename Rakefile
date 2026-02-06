@@ -9,3 +9,6 @@ Rake::TestTask.new(:test) do |t|
 end
 
 task default: :test
+
+# Load all task files from lib/tasks
+Dir[File.expand_path("lib/tasks/**/*.rake", __dir__)].each { |f| load f }
