@@ -22,7 +22,7 @@ module RbrunCli
         config = load_and_validate_config
         branch = detect_branch
         ctx = RbrunCore::Context.new(config:, target:, slug:, branch:)
-        ctx.source_folder = @folder ? File.expand_path(@folder) : nil
+        ctx.source_folder = File.expand_path(@folder || ".")
         ctx
       end
     end

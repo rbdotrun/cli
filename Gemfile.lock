@@ -8,6 +8,7 @@ PATH
       ed25519 (>= 1.2)
       faraday (~> 2.0)
       faraday-multipart (~> 1.0)
+      rexml
       sshkey (~> 3.0)
       sshkit (~> 1.23)
       zeitwerk (~> 2.6)
@@ -93,6 +94,7 @@ GEM
     rainbow (3.1.1)
     rake (13.3.1)
     regexp_parser (2.11.3)
+    rexml (3.4.4)
     rubocop (1.84.1)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)

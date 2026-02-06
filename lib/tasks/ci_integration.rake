@@ -24,12 +24,17 @@
 # == Environment
 #
 # Optional:
-#   CI_APP_PATH  - Path to app (default: ~/Desktop/dummy-rails)
-#   CI_ENV_PATH  - Path to .env file (default: $CI_APP_PATH/.env)
-#   CI_LOG_PATH  - Log file path (default: /tmp/rbrun-ci-test.log)
+#   CI_APP_PATH       - Path to app (default: ~/Desktop/dummy-rails)
+#   CI_ENV_PATH       - Path to .env file (default: $CI_APP_PATH/.env)
+#   CI_LOG_PATH       - Log file path (default: /tmp/rbrun-ci-test.log)
+#   COMPUTE_PROVIDER  - Provider to test: "hetzner" (default), "scaleway", or "aws"
 #
 # Required (in .env or exported):
-#   HETZNER_API_TOKEN, CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, RAILS_MASTER_KEY
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, RAILS_MASTER_KEY
+#
+#   For Hetzner:  HETZNER_API_TOKEN
+#   For Scaleway: SCALEWAY_API_KEY, SCALEWAY_PROJECT_ID
+#   For AWS:      AWS_ACCESS_ID, AWS_SECRET_ACCESS_KEY
 #
 
 require "rbrun_cli"
@@ -271,13 +276,7 @@ class CiIntegration
     def base_config
       {
         "target" => "ci-test",
-        "compute" => {
-          "provider" => "hetzner",
-          "api_key" => ENV.fetch("HETZNER_API_TOKEN"),
-          "ssh_key_path" => ENV.fetch("SSH_KEY_PATH", "~/.ssh/id_rsa"),
-          "location" => "ash",
-          "master" => { "instance_type" => "cpx21" }
-        },
+        "compute" => compute_config,
         "cloudflare" => {
           "api_token" => ENV.fetch("CLOUDFLARE_API_TOKEN"),
           "account_id" => ENV.fetch("CLOUDFLARE_ACCOUNT_ID"),
@@ -316,8 +315,8 @@ class CiIntegration
     def compute_with_app_workers
       config = deep_dup(base_config)
       config["compute"] = base_config["compute"].merge(
-        "master" => { "instance_type" => "cpx21" },
-        "servers" => { "app" => { "type" => "cpx21", "count" => 2 } }
+        "master" => { "instance_type" => instance_type },
+        "servers" => { "app" => { "type" => instance_type, "count" => 2 } }
       )
       config["app"]["processes"]["web"]["runs_on"] = ["app"]
       config["app"]["processes"]["worker"]["runs_on"] = ["app"]
@@ -328,10 +327,10 @@ class CiIntegration
     def compute_scaled_up
       config = deep_dup(base_config)
       config["compute"] = base_config["compute"].merge(
-        "master" => { "instance_type" => "cpx21" },
+        "master" => { "instance_type" => instance_type },
         "servers" => {
-          "app" => { "type" => "cpx21", "count" => 3 },
-          "worker" => { "type" => "cpx21" }
+          "app" => { "type" => instance_type, "count" => 3 },
+          "worker" => { "type" => instance_type }
         }
       )
       config["app"]["processes"] = {
@@ -351,8 +350,8 @@ class CiIntegration
     def compute_scaled_down
       config = deep_dup(base_config)
       config["compute"] = base_config["compute"].merge(
-        "master" => { "instance_type" => "cpx21" },
-        "servers" => { "app" => { "type" => "cpx21" } }
+        "master" => { "instance_type" => instance_type },
+        "servers" => { "app" => { "type" => instance_type } }
       )
       # Keep both web and worker processes - only server count changes
       config["app"]["processes"]["web"]["runs_on"] = ["app"]
@@ -506,9 +505,57 @@ class CiIntegration
     end
 
     def validate_env!
-      required = %w[HETZNER_API_TOKEN CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID RAILS_MASTER_KEY]
+      required = %w[CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID RAILS_MASTER_KEY]
+      required += case compute_provider
+                  when "aws"      then %w[AWS_ACCESS_ID AWS_SECRET_ACCESS_KEY]
+                  when "scaleway" then %w[SCALEWAY_API_KEY SCALEWAY_PROJECT_ID]
+                  else                 %w[HETZNER_API_TOKEN]
+                  end
       missing = required.reject { |k| ENV.key?(k) }
       raise "Missing env vars: #{missing.join(', ')}" if missing.any?
+    end
+
+    def compute_provider
+      ENV.fetch("COMPUTE_PROVIDER", "hetzner").downcase
+    end
+
+    def compute_config
+      case compute_provider
+      when "aws"
+        {
+          "provider" => "aws",
+          "access_key_id" => ENV.fetch("AWS_ACCESS_ID"),
+          "secret_access_key" => ENV.fetch("AWS_SECRET_ACCESS_KEY"),
+          "ssh_key_path" => ENV.fetch("SSH_KEY_PATH", "~/.ssh/id_rsa"),
+          "region" => ENV.fetch("AWS_REGION", "us-east-1"),
+          "master" => { "instance_type" => instance_type }
+        }
+      when "scaleway"
+        {
+          "provider" => "scaleway",
+          "api_key" => ENV.fetch("SCALEWAY_API_KEY"),
+          "project_id" => ENV.fetch("SCALEWAY_PROJECT_ID"),
+          "ssh_key_path" => ENV.fetch("SSH_KEY_PATH", "~/.ssh/id_rsa"),
+          "zone" => ENV.fetch("SCALEWAY_ZONE", "fr-par-1"),
+          "master" => { "instance_type" => instance_type }
+        }
+      else
+        {
+          "provider" => "hetzner",
+          "api_key" => ENV.fetch("HETZNER_API_TOKEN"),
+          "ssh_key_path" => ENV.fetch("SSH_KEY_PATH", "~/.ssh/id_rsa"),
+          "location" => ENV.fetch("HETZNER_LOCATION", "ash"),
+          "master" => { "instance_type" => instance_type }
+        }
+      end
+    end
+
+    def instance_type
+      case compute_provider
+      when "aws"      then "t3.medium"
+      when "scaleway" then "DEV1-M"
+      else                 "cpx21"
+      end
     end
 
     def deep_dup(hash)
