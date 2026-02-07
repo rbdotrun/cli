@@ -10,10 +10,13 @@ module RbrunCli
     desc "sandbox SUBCOMMAND", "Manage development sandboxes"
     subcommand "sandbox", Sandbox
 
+    desc "backup SUBCOMMAND", "Manage database backups"
+    subcommand "backup", Backup
+
     desc "resources", "List all resources across configured providers"
-    option :config, type: :string, required: true, aliases: "-c"
+    option :config, type: :string, default: "rbrun.yaml", aliases: "-c"
     option :folder, type: :string, aliases: "-f"
-    option :env_file, type: :string, aliases: "-e"
+    option :env_file, type: :string, default: ".env", aliases: "-e"
     def resources
       formatter = Formatter.new
       folder = options[:folder] || File.dirname(File.expand_path(options[:config]))

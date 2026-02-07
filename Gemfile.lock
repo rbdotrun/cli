@@ -3,6 +3,7 @@ PATH
   specs:
     rbrun-core (0.1.0)
       aws-sdk-ec2 (~> 1.0)
+      aws-sdk-s3 (~> 1.0)
       base64
       bcrypt_pbkdf (>= 1.0)
       ed25519 (>= 1.2)
@@ -19,7 +20,6 @@ PATH
     rbrun (0.1.0)
       rbrun-core (~> 0.1)
       thor (~> 1.0)
-      tty-spinner (~> 0.9)
       zeitwerk (~> 2.6)
 
 GEM
@@ -51,6 +51,13 @@ GEM
       logger
     aws-sdk-ec2 (1.597.0)
       aws-sdk-core (~> 3, >= 3.241.4)
+      aws-sigv4 (~> 1.5)
+    aws-sdk-kms (1.121.0)
+      aws-sdk-core (~> 3, >= 3.241.4)
+      aws-sigv4 (~> 1.5)
+    aws-sdk-s3 (1.213.0)
+      aws-sdk-core (~> 3, >= 3.241.4)
+      aws-sdk-kms (~> 1)
       aws-sigv4 (~> 1.5)
     aws-sigv4 (1.12.1)
       aws-eventstream (~> 1, >= 1.0.2)
@@ -140,9 +147,6 @@ GEM
       net-ssh (>= 2.8.0)
       ostruct
     thor (1.5.0)
-    tty-cursor (0.7.1)
-    tty-spinner (0.9.3)
-      tty-cursor (~> 0.7)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     unicode-display_width (3.2.0)

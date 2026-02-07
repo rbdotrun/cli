@@ -36,28 +36,46 @@ module RbrunCli
     end
 
     def state_change(state)
-      state = state.to_sym
-      color = STATE_COLORS.fetch(state, :gray)
-      label = state.to_s
-
-      if @tty
-        @output.puts "--> State: #{colorize(label, color)}"
-      else
-        @output.puts "--> State: #{label}"
-      end
+      # Only show final deployed message via summary
     end
 
     def summary(ctx)
-      state_change(ctx.state)
-      @output.puts "Slug: #{ctx.slug}" if ctx.target == :sandbox
-      @output.puts "Prefix: #{ctx.prefix}"
-      @output.puts "Server: #{ctx.server_ip}" if ctx.server_ip
+      return unless ctx.state == :deployed
 
-      if ctx.servers&.any?
-        rows = ctx.servers.map do |name, info|
-          [ "#{ctx.prefix}-#{name}", info[:ip] || "-", info[:group] || "-" ]
-        end
-        server_summary_table(rows)
+      domain = ctx.config.cloudflare_config&.domain
+      ip = ctx.server_ip
+
+      msg = "\u2713 Deployed successfully"
+      msg += " under #{domain}" if domain
+      msg += " (#{ip})" if ip
+      msg += "!"
+
+      if @tty
+        @output.puts colorize(msg, :green)
+      else
+        @output.puts msg
+      end
+
+      print_subdomains(ctx.config, domain)
+    end
+
+    def print_subdomains(config, domain)
+      return unless domain
+
+      entries = []
+
+      config.app_config&.processes&.each do |name, process|
+        entries << [ "#{process.subdomain}.#{domain}", name ] if process.subdomain
+      end
+
+      config.service_configs.each do |name, service|
+        entries << [ "#{service.subdomain}.#{domain}", name ] if service.subdomain
+      end
+
+      return if entries.empty?
+
+      entries.each do |url, name|
+        @output.puts "  - #{url}: #{name}"
       end
     end
 
@@ -154,6 +172,54 @@ module RbrunCli
       else
         @output.puts "Error: #{message}"
       end
+    end
+
+    def info(message)
+      @output.puts message
+    end
+
+    def success(message)
+      if @tty
+        @output.puts colorize("\u2713 #{message}", :green)
+      else
+        @output.puts message
+      end
+    end
+
+    def backup_list(objects)
+      headers = %w[NAME SIZE MODIFIED]
+      rows = objects.sort_by { |o| o[:last_modified] }.reverse.map do |obj|
+        size = format_size(obj[:size])
+        modified = obj[:last_modified].strftime("%Y-%m-%d %H:%M:%S")
+        [ obj[:key], size, modified ]
+      end
+
+      widths = headers.each_with_index.map do |h, i|
+        [ h.length, *rows.map { |r| r[i].to_s.length } ].max
+      end
+
+      header_line = headers.each_with_index.map { |h, i| h.ljust(widths[i]) }.join("  ")
+      separator = widths.map { |w| "-" * w }.join("  ")
+
+      if @tty
+        @output.puts colorize(header_line, :bold)
+      else
+        @output.puts header_line
+      end
+      @output.puts separator
+
+      rows.each do |row|
+        @output.puts row.each_with_index.map { |col, i| col.to_s.ljust(widths[i]) }.join("  ")
+      end
+    end
+
+    def format_size(bytes)
+      return "0 B" if bytes.zero?
+
+      units = %w[B KB MB GB]
+      exp = (Math.log(bytes) / Math.log(1024)).to_i
+      exp = [ exp, units.length - 1 ].min
+      "%.1f %s" % [ bytes.to_f / (1024**exp), units[exp] ]
     end
 
     def topology(data)
