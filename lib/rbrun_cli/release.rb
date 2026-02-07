@@ -16,7 +16,6 @@ module RbrunCli
     desc "deploy", "Deploy release infrastructure + app"
     def deploy
       with_error_handling do
-        config = runner.load_config
         runner.execute(RbrunCore::Commands::Deploy)
       end
     end
@@ -24,7 +23,6 @@ module RbrunCli
     desc "destroy", "Tear down release infrastructure"
     def destroy
       with_error_handling do
-        config = runner.load_config
         runner.execute(RbrunCore::Commands::Destroy)
       end
     end

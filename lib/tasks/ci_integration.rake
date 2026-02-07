@@ -97,7 +97,7 @@ class CiIntegration
       env_file: File.exist?(ENV_PATH) ? ENV_PATH : nil,
       formatter: CiFormatter.new(method(:log))
     )
-    @ctx = runner.build_context(target: :production)
+    @ctx = runner.build_context
     runner.send(:load_ssh_keys!, @ctx)
     @ctx.server_ip = find_any_server_ip
   rescue
@@ -375,7 +375,7 @@ class CiIntegration
         formatter: CiFormatter.new(method(:log))
       )
 
-      @ctx = runner.execute(RbrunCore::Commands::Deploy, target: :production)
+      @ctx = runner.execute(RbrunCore::Commands::Deploy)
     end
 
     def deploy_and_capture_context
@@ -385,7 +385,7 @@ class CiIntegration
         env_file: File.exist?(ENV_PATH) ? ENV_PATH : nil,
         formatter: CiFormatter.new(method(:log))
       )
-      @ctx = runner.build_context(target: :production)
+      @ctx = runner.build_context
       runner.send(:load_ssh_keys!, @ctx)
     end
 
