@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Suppress net-ssh 7.3.0 warning about method redefinition
+$VERBOSE = nil
+require "net/ssh"
+$VERBOSE = true
+
 require "bundler/setup"
 require "rbrun_cli"
 require "minitest/autorun"
