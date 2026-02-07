@@ -17,7 +17,7 @@ module RbrunCli
     def deploy
       with_error_handling do
         config = runner.load_config
-        runner.execute(RbrunCore::Commands::Deploy, target: config.target || :production)
+        runner.execute(RbrunCore::Commands::Deploy, target: config.target)
       end
     end
 
@@ -25,7 +25,7 @@ module RbrunCli
     def destroy
       with_error_handling do
         config = runner.load_config
-        runner.execute(RbrunCore::Commands::Destroy, target: config.target || :production)
+        runner.execute(RbrunCore::Commands::Destroy, target: config.target)
       end
     end
 
@@ -148,8 +148,7 @@ module RbrunCli
       end
 
       def build_prefix(config)
-        target = (config.target || :production).to_sym
-        RbrunCore::Naming.release_prefix(config.git_config.app_name, target)
+        RbrunCore::Naming.release_prefix(config.git_config.app_name, config.target)
       end
 
       def abort_with(message)

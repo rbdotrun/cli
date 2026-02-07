@@ -30,7 +30,7 @@ module RbrunCli
           account_id: cf_config.account_id
         )
 
-        bucket_name = RbrunCore::Naming.backup_bucket(config.git_config.app_name, config.target || :production)
+        bucket_name = RbrunCore::Naming.backup_bucket(config.git_config.app_name, config.target)
 
         begin
           objects = r2.list_objects(bucket: bucket_name)

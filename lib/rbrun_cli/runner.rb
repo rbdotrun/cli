@@ -76,7 +76,7 @@ module RbrunCli
     def build_operational_context(target: nil, slug: nil, server: nil)
       config = load_config
       found_server = find_server(config, server)
-      target ||= config.target || :production
+      target ||= config.target
 
       ctx = RbrunCore::Context.new(config:, target:, slug:)
       ctx.server_ip = found_server.public_ipv4
@@ -141,13 +141,11 @@ module RbrunCli
       end
 
       def build_prefix(config)
-        target = (config.target || :production).to_sym
-        case target
+        case config.target
         when :sandbox
-          # Sandbox prefix requires a slug — handled at call site
           raise RbrunCore::Error::Standard, "Cannot determine prefix for sandbox without slug"
         else
-          RbrunCore::Naming.release_prefix(config.git_config.app_name, target)
+          RbrunCore::Naming.release_prefix(config.git_config.app_name, config.target)
         end
       end
 
