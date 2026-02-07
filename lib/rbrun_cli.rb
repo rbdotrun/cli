@@ -13,7 +13,6 @@ end
 # External dependencies
 require "rbrun_core"
 require "thor"
-require "tty-spinner"
 
 # Setup and eager load
 RbrunCli.loader.setup

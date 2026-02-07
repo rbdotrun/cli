@@ -181,7 +181,7 @@ class CiIntegration
       deploy!
 
       assert_node_count(3)
-      topology.validate_placement!({ "web" => ["app"], "worker" => ["app"], "postgres" => ["master"] })
+      topology.validate_placement!({ "web" => [ "app" ], "worker" => [ "app" ], "postgres" => [ "master" ] })
       topology.validate_replicas!({ "web" => 2, "worker" => 1, "postgres" => 1 })
       verify_app_responds!
       log_success("Master + app workers: OK")
@@ -209,7 +209,7 @@ class CiIntegration
       deploy!
 
       assert_node_count(5)
-      topology.validate_placement!({ "web" => ["app"], "worker" => ["worker"], "postgres" => ["master"] })
+      topology.validate_placement!({ "web" => [ "app" ], "worker" => [ "worker" ], "postgres" => [ "master" ] })
       topology.validate_replicas!({ "web" => 4, "worker" => 2, "postgres" => 1 })
       verify_app_responds!
       log_success("Scale up: OK")
@@ -263,7 +263,7 @@ class CiIntegration
       deploy!
 
       assert_node_count(2)
-      topology.validate_placement!({ "web" => ["app"], "worker" => ["app"], "postgres" => ["master"] })
+      topology.validate_placement!({ "web" => [ "app" ], "worker" => [ "app" ], "postgres" => [ "master" ] })
       topology.validate_replicas!({ "web" => 2, "worker" => 1, "postgres" => 1 })
       verify_app_responds!
       log_success("Scale down: OK")
@@ -298,7 +298,7 @@ class CiIntegration
             }
           }
         },
-        "setup" => ["bin/rails db:prepare"],
+        "setup" => [ "bin/rails db:prepare" ],
         "env" => {
           "RAILS_ENV" => "production",
           "RAILS_MASTER_KEY" => ENV.fetch("RAILS_MASTER_KEY")
@@ -318,8 +318,8 @@ class CiIntegration
         "master" => { "instance_type" => instance_type },
         "servers" => { "app" => { "type" => instance_type, "count" => 2 } }
       )
-      config["app"]["processes"]["web"]["runs_on"] = ["app"]
-      config["app"]["processes"]["worker"]["runs_on"] = ["app"]
+      config["app"]["processes"]["web"]["runs_on"] = [ "app" ]
+      config["app"]["processes"]["worker"]["runs_on"] = [ "app" ]
       config
     end
 
@@ -339,9 +339,9 @@ class CiIntegration
           "port" => 80,
           "subdomain" => "ci-test",
           "replicas" => 4,
-          "runs_on" => ["app"]
+          "runs_on" => [ "app" ]
         },
-        "worker" => { "command" => "bin/jobs", "replicas" => 2, "runs_on" => ["worker"] }
+        "worker" => { "command" => "bin/jobs", "replicas" => 2, "runs_on" => [ "worker" ] }
       }
       config
     end
@@ -354,8 +354,8 @@ class CiIntegration
         "servers" => { "app" => { "type" => instance_type } }
       )
       # Keep both web and worker processes - only server count changes
-      config["app"]["processes"]["web"]["runs_on"] = ["app"]
-      config["app"]["processes"]["worker"]["runs_on"] = ["app"]
+      config["app"]["processes"]["web"]["runs_on"] = [ "app" ]
+      config["app"]["processes"]["worker"]["runs_on"] = [ "app" ]
       config
     end
 
@@ -507,10 +507,10 @@ class CiIntegration
     def validate_env!
       required = %w[CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID RAILS_MASTER_KEY]
       required += case compute_provider
-                  when "aws"      then %w[AWS_ACCESS_ID AWS_SECRET_ACCESS_KEY]
-                  when "scaleway" then %w[SCALEWAY_API_KEY SCALEWAY_PROJECT_ID]
-                  else                 %w[HETZNER_API_TOKEN]
-                  end
+      when "aws"      then %w[AWS_ACCESS_ID AWS_SECRET_ACCESS_KEY]
+      when "scaleway" then %w[SCALEWAY_API_KEY SCALEWAY_PROJECT_ID]
+      else                 %w[HETZNER_API_TOKEN]
+      end
       missing = required.reject { |k| ENV.key?(k) }
       raise "Missing env vars: #{missing.join(', ')}" if missing.any?
     end
@@ -586,26 +586,26 @@ class CiIntegration
       @log_file&.puts(line)
     end
 
-  # Minimal formatter for CI output
-  class CiFormatter
-    def initialize(log_proc)
-      @log_proc = log_proc
-    end
+    # Minimal formatter for CI output
+    class CiFormatter
+      def initialize(log_proc)
+        @log_proc = log_proc
+      end
 
-    def log(category, message)
-      @log_proc.call("[#{category}] #{message}")
-    end
+      def log(category, message)
+        @log_proc.call("[#{category}] #{message}")
+      end
 
-    def state_change(state)
-      @log_proc.call("State: #{state}")
-    end
+      def state_change(state)
+        @log_proc.call("State: #{state}")
+      end
 
-    def summary(ctx)
-      @log_proc.call("Deploy complete: #{ctx.server_ip}")
-    end
+      def summary(ctx)
+        @log_proc.call("Deploy complete: #{ctx.server_ip}")
+      end
 
-    def error(message)
-      @log_proc.call("ERROR: #{message}")
+      def error(message)
+        @log_proc.call("ERROR: #{message}")
+      end
     end
-  end
 end

@@ -11,12 +11,12 @@ class FormatterTest < Minitest::Test
     assert_equal "[deploy] Starting deployment\n", text
   end
 
-  def test_state_change_outputs_state
+  def test_state_change_outputs_nothing
     text = capture_output do |out|
       RbrunCli::Formatter.new(output: out).state_change(:deployed)
     end
 
-    assert_equal "--> State: deployed\n", text
+    assert_empty text
   end
 
   def test_error_outputs_error_message
@@ -27,7 +27,7 @@ class FormatterTest < Minitest::Test
     assert_equal "Error: Something went wrong\n", text
   end
 
-  def test_summary_includes_state_and_prefix
+  def test_summary_shows_deployed_message
     text = capture_output do |out|
       ctx = build_context
       ctx.state = :deployed
@@ -35,9 +35,8 @@ class FormatterTest < Minitest::Test
       RbrunCli::Formatter.new(output: out).summary(ctx)
     end
 
-    assert_includes text, "--> State: deployed"
-    assert_includes text, "Prefix: test-repo-production"
-    assert_includes text, "Server: 1.2.3.4"
+    assert_includes text, "Deployed successfully"
+    assert_includes text, "1.2.3.4"
   end
 
   def test_status_table_renders_columns

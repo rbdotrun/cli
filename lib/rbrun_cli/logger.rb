@@ -41,9 +41,9 @@ module RbrunCli
 
       def add_output(io, color:)
         use_color = case color
-                    when :auto then io.respond_to?(:tty?) && io.tty?
-                    else color
-                    end
+        when :auto then io.respond_to?(:tty?) && io.tty?
+        else color
+        end
         @outputs << Output.new(io, color: use_color)
       end
 

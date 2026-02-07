@@ -1,94 +1,72 @@
 # frozen_string_literal: true
 
 module RbrunCli
-  # Displays rollout progress using TTY::Spinner::Multi.
-  #
-  # Usage:
-  #   progress = RolloutProgress.new
-  #   progress.call(:start, ["myapp-web", "myapp-worker"])
-  #   progress.call(:update, { name: "myapp-web", ready: 1, desired: 2, ready?: false })
-  #   progress.call(:done, nil)
-  #
   class RolloutProgress
-    SPINNER_FORMAT = :dots
-    SUCCESS_MARK = "\e[32m\u2713\e[0m"  # Green checkmark
-    ERROR_MARK = "\e[31m\u2717\e[0m"    # Red X
+    TIMEOUT = 300
+    INTERVAL = 2
 
     def initialize(output: $stdout)
       @output = output
       @tty = output.respond_to?(:tty?) && output.tty?
-      @multi = nil
-      @spinners = {}
-      @short_names = {}
+      @last_line_count = 0
     end
 
     def call(event, data)
-      case event
-      when :start
-        start_spinners(data)
-      when :update
-        update_spinner(data)
-      when :done
-        finish_all
-      end
+      return unless event == :wait && data
+
+      kubectl = data[:kubectl]
+      deployments = data[:deployments]
+
+      wait_for_pods(kubectl, deployments)
     end
 
     private
 
-      def start_spinners(deployments)
-        if @tty
-          @multi = TTY::Spinner::Multi.new(
-            "[:spinner] Rolling out...",
-            format: SPINNER_FORMAT,
-            output: @output
-          )
+      def wait_for_pods(kubectl, deployments)
+        deadline = Time.now + TIMEOUT
 
-          deployments.each do |name|
-            short_name = name.split("-").last(2).join("-")
-            @short_names[name] = short_name
-            # Empty format - we'll set the full message on success
-            @spinners[name] = @multi.register(
-              "[:spinner] #{short_name}",
-              format: SPINNER_FORMAT,
-              success_mark: SUCCESS_MARK,
-              error_mark: ERROR_MARK
-            )
+        loop do
+          pods = kubectl.get_pods
+          relevant = pods.select { |p| deployments.any? { |d| p[:app]&.include?(d) } }
+
+          render(relevant)
+
+          all_ready = deployments.all? do |dep|
+            dep_pods = relevant.select { |p| p[:app]&.include?(dep) }
+            dep_pods.any? && dep_pods.all? { |p| p[:ready] }
           end
 
-          @multi.auto_spin
-        else
-          # Non-TTY fallback: just log that we're starting
-          @output.puts "[wait_rollout] Waiting for #{deployments.length} deployment(s)..."
+          break if all_ready
+
+          if Time.now >= deadline
+            stuck = relevant.reject { |p| p[:ready] }
+            raise RbrunCore::Error::Standard, "Rollout timed out. Stuck:\n#{format_stuck(stuck)}"
+          end
+
+          sleep INTERVAL
         end
       end
 
-      def update_spinner(status)
-        return unless status
+      def render(pods)
+        lines = []
+        lines << "#{"NAME".ljust(55)}#{"READY".ljust(8)}STATUS"
 
-        name = status[:name]
-        ready = status[:ready] || 0
-        desired = status[:desired] || 0
-        is_ready = status[:ready?]
-
-        if @tty && @spinners[name]
-          spinner = @spinners[name]
-
-          if is_ready
-            spinner.success("(#{ready}/#{desired})")
-          end
-          # Don't update while spinning - tty-spinner token updates are unreliable
-        elsif !@tty && is_ready
-          @output.puts "[wait_rollout] #{name}: #{ready}/#{desired} \u2713"
+        pods.each do |p|
+          ready_str = "#{p[:ready_count]}/#{p[:total]}"
+          status = p[:ready] ? "\e[32m#{p[:status]}\e[0m" : p[:status]
+          lines << "#{p[:name][0, 54].ljust(55)}#{ready_str.ljust(8)}#{status}"
         end
+
+        if @tty && @last_line_count > 0
+          @output.print "\e[#{@last_line_count}A\e[J"
+        end
+
+        lines.each { |l| @output.puts l }
+        @last_line_count = lines.size
       end
 
-      def finish_all
-        return unless @tty && @multi
-
-        # Mark any remaining spinners as done
-        @spinners.each_value do |spinner|
-          spinner.success unless spinner.done?
-        end
+      def format_stuck(pods)
+        pods.map { |p| "  #{p[:name]} - #{p[:status]}" }.join("\n")
       end
   end
 end
