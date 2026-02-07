@@ -39,19 +39,17 @@ class FormatterTest < Minitest::Test
     assert_includes text, "1.2.3.4"
   end
 
-  def test_status_table_renders_columns
-    text = capture_output do |out|
-      servers = [
-        RbrunCore::Clients::Compute::Types::Server.new(
-          name: "myapp-web", public_ipv4: "1.2.3.4", status: "running", instance_type: "cpx11"
-        )
-      ]
-      RbrunCli::Formatter.new(output: out).status_table(servers)
-    end
+  def test_status_table_renders_headers
+    text = render_status_table
 
     assert_includes text, "NAME"
     assert_includes text, "IP"
     assert_includes text, "STATUS"
+  end
+
+  def test_status_table_renders_server_data
+    text = render_status_table
+
     assert_includes text, "myapp-web"
     assert_includes text, "1.2.3.4"
   end
@@ -63,4 +61,17 @@ class FormatterTest < Minitest::Test
 
     assert_empty text
   end
+
+  private
+
+    def render_status_table
+      capture_output do |out|
+        servers = [
+          RbrunCore::Clients::Compute::Types::Server.new(
+            name: "myapp-web", public_ipv4: "1.2.3.4", status: "running", instance_type: "cpx11"
+          )
+        ]
+        RbrunCli::Formatter.new(output: out).status_table(servers)
+      end
+    end
 end

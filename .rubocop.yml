@@ -20,4 +20,3 @@ Layout/IndentationWidth:
 
 Minitest/MultipleAssertions:
   Enabled: true
-  Max: 6
