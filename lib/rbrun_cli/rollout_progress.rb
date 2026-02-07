@@ -40,7 +40,8 @@ module RbrunCli
 
           if Time.now >= deadline
             stuck = relevant.reject { |p| p[:ready] }
-            raise RbrunCore::Error::Standard, "Rollout timed out. Stuck:\n#{format_stuck(stuck)}"
+            print_failure_details(kubectl, stuck, deployments)
+            raise RbrunCore::Error::Standard, format_stuck(stuck)
           end
 
           sleep INTERVAL
@@ -67,6 +68,27 @@ module RbrunCli
 
       def format_stuck(pods)
         pods.map { |p| "  #{p[:name]} - #{p[:status]}" }.join("\n")
+      end
+
+      def print_failure_details(kubectl, stuck_pods, deployments)
+        # Find unique failing deployments
+        failing_deployments = stuck_pods.map { |p| p[:app] }.compact.uniq
+
+        failing_deployments.each do |deployment|
+          @output.puts "\n\e[33mLogs from #{deployment}:\e[0m"
+          begin
+            result = kubectl.logs(deployment, tail: 50)
+            result[:output].each_line { |line| @output.puts "  #{line}" }
+          rescue StandardError => e
+            @output.puts "  (could not fetch logs: #{e.message})"
+          end
+        end
+
+        @output.puts "\n\e[36mInspect with:\e[0m"
+        failing_deployments.each do |deployment|
+          @output.puts "  rbrun release logs --process #{deployment.split('-').last}"
+        end
+        @output.puts ""
       end
   end
 end

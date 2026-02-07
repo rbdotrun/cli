@@ -27,13 +27,76 @@ class RolloutProgressTest < Minitest::Test
     assert_equal "", text
   end
 
-  class MockKubectl
-    def initialize(pods)
-      @pods = pods
+  def test_timeout_prints_logs_from_failing_pods
+    mock_kubectl = MockKubectl.new(
+      [ { name: "web-abc", app: "myapp-web", ready_count: 0, total: 1, status: "CrashLoopBackOff", ready: false } ],
+      logs: { "myapp-web" => "Error: something went wrong\nStack trace here" }
+    )
+
+    text, _error = capture_timeout_output(mock_kubectl, [ "myapp-web" ])
+
+    assert_includes text, "Logs from myapp-web:"
+    assert_includes text, "Error: something went wrong"
+  end
+
+  def test_timeout_prints_inspect_command
+    mock_kubectl = MockKubectl.new(
+      [ { name: "web-abc", app: "myapp-web", ready_count: 0, total: 1, status: "CrashLoopBackOff", ready: false } ],
+      logs: {}
+    )
+
+    text, _error = capture_timeout_output(mock_kubectl, [ "myapp-web" ])
+
+    assert_includes text, "Inspect with:"
+    assert_includes text, "rbrun release logs --process web"
+  end
+
+  def test_timeout_error_message_lists_stuck_pods
+    mock_kubectl = MockKubectl.new(
+      [ { name: "web-abc", app: "myapp-web", ready_count: 0, total: 1, status: "CrashLoopBackOff", ready: false } ],
+      logs: {}
+    )
+
+    _text, error = capture_timeout_output(mock_kubectl, [ "myapp-web" ])
+
+    assert_includes error.message, "web-abc - CrashLoopBackOff"
+    refute_includes error.message, "Rollout timed out"
+  end
+
+  private
+
+    def capture_timeout_output(kubectl, deployments)
+      out = StringIO.new
+      progress = RbrunCli::RolloutProgress.new(output: out)
+      error = nil
+      # Temporarily set timeout to 0 to trigger immediate timeout
+      original_timeout = RbrunCli::RolloutProgress::TIMEOUT
+      RbrunCli::RolloutProgress.send(:remove_const, :TIMEOUT)
+      RbrunCli::RolloutProgress.const_set(:TIMEOUT, 0)
+      begin
+        progress.call(:wait, { kubectl:, deployments: })
+      rescue RbrunCore::Error::Standard => e
+        error = e
+      ensure
+        RbrunCli::RolloutProgress.send(:remove_const, :TIMEOUT)
+        RbrunCli::RolloutProgress.const_set(:TIMEOUT, original_timeout)
+      end
+      [ out.string, error ]
     end
 
-    def get_pods
-      @pods
+    class MockKubectl
+      def initialize(pods, logs: {})
+        @pods = pods
+        @logs = logs
+      end
+
+      def get_pods
+        @pods
+      end
+
+      def logs(deployment, tail: 100)
+        output = @logs[deployment] || "(no logs)"
+        { output:, exit_code: 0 }
+      end
     end
-  end
 end
