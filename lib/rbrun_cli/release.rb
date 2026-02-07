@@ -4,11 +4,11 @@ module RbrunCli
   class Release < Thor
     def self.exit_on_failure? = true
 
-    class_option :config, type: :string, required: true, aliases: "-c",
+    class_option :config, type: :string, default: "rbrun.yaml", aliases: "-c",
                           desc: "Path to YAML config file"
     class_option :folder, type: :string, aliases: "-f",
                           desc: "Working directory for git detection"
-    class_option :env_file, type: :string, aliases: "-e",
+    class_option :env_file, type: :string, default: ".env", aliases: "-e",
                              desc: "Path to .env file for variable interpolation"
     class_option :log_file, type: :string, aliases: "-l",
                              desc: "Log file path (default: {folder}/deploy.log)"
@@ -16,14 +16,16 @@ module RbrunCli
     desc "deploy", "Deploy release infrastructure + app"
     def deploy
       with_error_handling do
-        runner.execute(RbrunCore::Commands::Deploy, target: :production)
+        config = runner.load_config
+        runner.execute(RbrunCore::Commands::Deploy, target: config.target || :production)
       end
     end
 
     desc "destroy", "Tear down release infrastructure"
     def destroy
       with_error_handling do
-        runner.execute(RbrunCore::Commands::Destroy, target: :production)
+        config = runner.load_config
+        runner.execute(RbrunCore::Commands::Destroy, target: config.target || :production)
       end
     end
 
