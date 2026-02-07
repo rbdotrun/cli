@@ -21,7 +21,7 @@ Minitest.after_run { FileUtils.rm_rf(TEST_SSH_KEY_DIR) }
 module RbrunCliTestSetup
   private
 
-    def build_config(target: nil)
+    def build_config(target: :production)
       config = RbrunCore::Configuration.new
       config.target = target
       config.compute(:hetzner) do |c|
