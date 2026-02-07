@@ -20,20 +20,20 @@ class RunnerTest < Minitest::Test
     assert_raises(Errno::ENOENT) { runner.load_config }
   end
 
-  def test_build_context_returns_context_with_target
+  def test_build_context_returns_context_with_config_target
     with_config_file do |path, _dir|
       runner = RbrunCli::Runner.new(config_path: path)
-      ctx = runner.build_context(target: :production)
+      ctx = runner.build_context
 
       assert_instance_of RbrunCore::Context, ctx
-      assert_equal :production, ctx.target
+      assert_equal :production, ctx.target  # from config file
     end
   end
 
-  def test_build_context_with_sandbox_target_and_slug
-    with_config_file do |path, _dir|
+  def test_build_context_with_slug
+    with_config_file(target: "sandbox") do |path, _dir|
       runner = RbrunCli::Runner.new(config_path: path)
-      ctx = runner.build_context(target: :sandbox, slug: "ab12cd")
+      ctx = runner.build_context(slug: "ab12cd")
 
       assert_equal :sandbox, ctx.target
       assert_equal "ab12cd", ctx.slug
@@ -218,7 +218,7 @@ class RunnerTest < Minitest::Test
     with_config_file do |path, dir|
       original_cwd = Dir.pwd
       runner = RbrunCli::Runner.new(config_path: path, folder: dir)
-      runner.build_context(target: :production)
+      runner.build_context
 
       assert_equal original_cwd, Dir.pwd
     end
@@ -274,11 +274,11 @@ class RunnerTest < Minitest::Test
 
   private
 
-    def with_config_file
+    def with_config_file(target: "production")
       Dir.mktmpdir do |dir|
         config_path = File.join(dir, "config.yaml")
         File.write(config_path, YAML.dump(
-          "target" => "production",
+          "target" => target,
           "compute" => {
             "provider" => "hetzner",
             "api_key" => "test-key",

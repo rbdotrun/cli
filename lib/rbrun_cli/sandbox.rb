@@ -4,11 +4,11 @@ module RbrunCli
   class Sandbox < Thor
     def self.exit_on_failure? = true
 
-    class_option :config, type: :string, required: true, aliases: "-c",
+    class_option :config, type: :string, default: "rbrun.yaml", aliases: "-c",
                           desc: "Path to YAML config file"
     class_option :folder, type: :string, aliases: "-f",
                           desc: "Working directory for git detection"
-    class_option :env_file, type: :string, aliases: "-e",
+    class_option :env_file, type: :string, default: ".env", aliases: "-e",
                              desc: "Path to .env file for variable interpolation"
     class_option :log_file, type: :string, aliases: "-l",
                              desc: "Log file path (default: {folder}/deploy.log)"
@@ -18,7 +18,7 @@ module RbrunCli
     def deploy
       with_error_handling do
         slug = options[:slug] || RbrunCore::Naming.generate_slug
-        runner.execute(RbrunCore::Commands::DeploySandbox, target: :sandbox, slug:)
+        runner.execute(RbrunCore::Commands::DeploySandbox, slug:, sandbox: true)
       end
     end
 
@@ -27,7 +27,7 @@ module RbrunCli
     def destroy
       with_error_handling do
         RbrunCore::Naming.validate_slug!(options[:slug])
-        runner.execute(RbrunCore::Commands::DestroySandbox, target: :sandbox, slug: options[:slug])
+        runner.execute(RbrunCore::Commands::DestroySandbox, slug: options[:slug], sandbox: true)
       end
     end
 
@@ -38,7 +38,7 @@ module RbrunCli
     def exec(command)
       with_error_handling do
         RbrunCore::Naming.validate_slug!(options[:slug])
-        ctx = runner.build_operational_context(target: :sandbox, slug: options[:slug])
+        ctx = runner.build_operational_context(slug: options[:slug], sandbox: true)
         kubectl = runner.build_kubectl(ctx)
 
         prefix = RbrunCore::Naming.resource(options[:slug])
@@ -58,7 +58,7 @@ module RbrunCli
     def ssh
       with_error_handling do
         RbrunCore::Naming.validate_slug!(options[:slug])
-        ctx = runner.build_operational_context(target: :sandbox, slug: options[:slug])
+        ctx = runner.build_operational_context(slug: options[:slug], sandbox: true)
         key_path = File.expand_path(ctx.config.compute_config.ssh_key_path)
         Kernel.exec("ssh", "-i", key_path, "-o", "StrictHostKeyChecking=no",
                     "deploy@#{ctx.server_ip}")
@@ -70,7 +70,7 @@ module RbrunCli
     def sql
       with_error_handling do
         RbrunCore::Naming.validate_slug!(options[:slug])
-        ctx = runner.build_operational_context(target: :sandbox, slug: options[:slug])
+        ctx = runner.build_operational_context(slug: options[:slug], sandbox: true)
         pg = ctx.config.database_configs[:postgres]
         abort_with("No postgres database configured") unless pg
 
@@ -93,7 +93,7 @@ module RbrunCli
     def logs
       with_error_handling do
         RbrunCore::Naming.validate_slug!(options[:slug])
-        ctx = runner.build_operational_context(target: :sandbox, slug: options[:slug])
+        ctx = runner.build_operational_context(slug: options[:slug], sandbox: true)
 
         prefix = RbrunCore::Naming.resource(options[:slug])
         deployment = if options[:service]

@@ -5,12 +5,6 @@ require "tmpdir"
 require "yaml"
 
 class ReleaseTest < Minitest::Test
-  def test_deploy_requires_config_option
-    output = capture_thor(%w[release deploy])
-
-    assert_match(/config/, output)
-  end
-
   def test_configuration_error_exits_1
     with_invalid_config do |path|
       release = RbrunCli::Release.new([], { config: path })
@@ -55,7 +49,7 @@ class ReleaseTest < Minitest::Test
 
   def test_sql_aborts_when_no_postgres
     config = build_config
-    ctx = RbrunCore::Context.new(config:, target: :production)
+    ctx = RbrunCore::Context.new(config:)
     ctx.server_ip = "1.2.3.4"
     ctx.ssh_private_key = TEST_SSH_KEY.private_key
 
@@ -68,7 +62,7 @@ class ReleaseTest < Minitest::Test
   def test_sql_execs_ssh_with_psql
     config = build_config
     config.database(:postgres) { |db| db.username = "myuser"; db.database = "mydb" }
-    ctx = RbrunCore::Context.new(config:, target: :production)
+    ctx = RbrunCore::Context.new(config:)
     ctx.server_ip = "1.2.3.4"
     ctx.ssh_private_key = TEST_SSH_KEY.private_key
 
@@ -212,14 +206,6 @@ class ReleaseTest < Minitest::Test
 
     assert_raises(SystemExit) { release.exec("bad") }
     assert_includes error_out.string, "command not found"
-  end
-
-  # ── destroy ──
-
-  def test_destroy_requires_config_option
-    output = capture_thor(%w[release destroy])
-
-    assert_match(/config/, output)
   end
 
   private

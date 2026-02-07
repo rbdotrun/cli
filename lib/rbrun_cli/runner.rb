@@ -17,18 +17,22 @@ module RbrunCli
       load_env_file(env_file) if env_file
     end
 
-    def build_context(target:, slug: nil)
+    def build_context(slug: nil, sandbox: false)
       in_folder do
         config = load_and_validate_config
+        if sandbox
+          config.target = :sandbox
+          config.validate_sandbox_mode!
+        end
         branch = detect_branch
-        ctx = RbrunCore::Context.new(config:, target:, slug:, branch:)
+        ctx = RbrunCore::Context.new(config:, slug:, branch:)
         ctx.source_folder = File.expand_path(@folder || ".")
         ctx
       end
     end
 
-    def execute(command_class, target:, slug: nil)
-      ctx = build_context(target:, slug:)
+    def execute(command_class, slug: nil, sandbox: false)
+      ctx = build_context(slug:, sandbox:)
       load_ssh_keys!(ctx)
 
       opts = {
@@ -73,12 +77,15 @@ module RbrunCli
       server
     end
 
-    def build_operational_context(target: nil, slug: nil, server: nil)
+    def build_operational_context(slug: nil, server: nil, sandbox: false)
       config = load_config
+      if sandbox
+        config.target = :sandbox
+        config.validate_sandbox_mode!
+      end
       found_server = find_server(config, server)
-      target ||= config.target
 
-      ctx = RbrunCore::Context.new(config:, target:, slug:)
+      ctx = RbrunCore::Context.new(config:, slug:)
       ctx.server_ip = found_server.public_ipv4
       load_ssh_keys!(ctx)
       ctx

@@ -17,7 +17,7 @@ module RbrunCli
     def deploy
       with_error_handling do
         config = runner.load_config
-        runner.execute(RbrunCore::Commands::Deploy, target: config.target)
+        runner.execute(RbrunCore::Commands::Deploy)
       end
     end
 
@@ -25,7 +25,7 @@ module RbrunCli
     def destroy
       with_error_handling do
         config = runner.load_config
-        runner.execute(RbrunCore::Commands::Destroy, target: config.target)
+        runner.execute(RbrunCore::Commands::Destroy)
       end
     end
 

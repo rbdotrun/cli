@@ -4,6 +4,58 @@ Deploy apps to bare-metal Kubernetes. One YAML file, zero DevOps.
 
 rbrun provisions servers, installs K3s, builds your Docker image, and deploys it — all from a single `rbrun.yaml` config.
 
+## Deployment strategies
+
+rbrun has two deployment strategies, determined by the `target` value in your config:
+
+### Sandbox (`target: sandbox`)
+
+Ephemeral, disposable environments for testing.
+
+- Each deploy gets a **random slug** (e.g., `a3f8b2`)
+- Naming: `rbrun-sandbox-{slug}` (e.g., `rbrun-sandbox-a3f8b2`)
+- Uses Docker Compose on a single server
+- Single-server only — `runs_on` is forbidden in sandbox mode
+- No K3s, no multi-server clusters
+- Spin up per branch/PR, destroy when done
+
+```bash
+rbrun sandbox deploy          # Creates rbrun-a3f8b2
+rbrun sandbox destroy         # Destroys it
+```
+
+### Release (`target: production`, `target: staging`, or any other value)
+
+Persistent infrastructure for real deployments.
+
+- Naming: `{app-name}-{target}` (e.g., `myapp-production`, `myapp-staging`)
+- Uses K3s/Kubernetes
+- Persistent volumes, backups, proper networking
+- Survives redeploys
+
+```bash
+rbrun release deploy                         # Uses rbrun.yaml → myapp-production
+rbrun release deploy -c rbrun.staging.yaml   # Uses staging config → myapp-staging
+```
+
+### Running staging and production side by side
+
+Use separate config files with different `target` values:
+
+```yaml
+# rbrun.yaml
+target: production
+# ...
+
+# rbrun.staging.yaml
+target: staging
+# ...
+```
+
+Both deploy to the same cloud account without conflicts:
+- `myapp-production-master-1` (production server)
+- `myapp-staging-master-1` (staging server)
+
 ## Install
 
 ```bash
@@ -13,26 +65,26 @@ gem install rbrun
 ## Quick start
 
 ```bash
-# Deploy to production
-rbrun release deploy -c rbrun.yaml -f . -e .env
+# Deploy to production (defaults: -c rbrun.yaml -e .env)
+rbrun release deploy
 
 # Check status
-rbrun release status -c rbrun.yaml
+rbrun release status
 
 # View logs
-rbrun release logs -c rbrun.yaml
+rbrun release logs
 
 # SSH into the server
-rbrun release ssh -c rbrun.yaml
+rbrun release ssh
 
 # Run a command in a pod
-rbrun release exec "rails console" -c rbrun.yaml
+rbrun release exec "rails console"
 
 # Connect to PostgreSQL
-rbrun release sql -c rbrun.yaml
+rbrun release sql
 
 # Tear everything down
-rbrun release destroy -c rbrun.yaml
+rbrun release destroy
 ```
 
 ## Sandboxes
@@ -40,9 +92,9 @@ rbrun release destroy -c rbrun.yaml
 Ephemeral environments spun up from a branch. Each gets its own server and unique URL.
 
 ```bash
-rbrun sandbox deploy -c rbrun.yaml -f . -e .env
-rbrun sandbox logs --slug abc123 -c rbrun.yaml
-rbrun sandbox destroy --slug abc123 -c rbrun.yaml
+rbrun sandbox deploy
+rbrun sandbox logs --slug abc123
+rbrun sandbox destroy --slug abc123
 ```
 
 ## Configuration
@@ -78,9 +130,8 @@ app:
       command: bin/rails server
       port: 3000
       subdomain: www                # Accessible at www.example.com
-
-setup:
-  - bin/rails db:prepare
+      setup:
+        - bin/rails db:prepare
 
 env:
   RAILS_ENV: production
@@ -117,7 +168,7 @@ cloudflare:
 databases:
   postgres:
     image: pgvector/pgvector:pg17   # Custom image
-    runs_on: db                     # Pinned to db server group
+    # Note: databases always run on master (no runs_on support)
 
 services:
   redis:
@@ -134,14 +185,13 @@ app:
       replicas: 2                   # 2 pods across app servers
       runs_on:
         - app
+      setup:
+        - bin/rails db:prepare
     worker:
       command: bin/jobs
       replicas: 2
       runs_on:
         - worker                    # Isolated on worker servers
-
-setup:
-  - bin/rails db:prepare
 
 env:
   RAILS_ENV: production
@@ -179,10 +229,10 @@ Redeploying with the same config is a no-op for infrastructure. Only the app ima
 ### `target`
 
 ```yaml
-target: production    # or staging, sandbox
+target: production    # or staging, sandbox, or any custom value
 ```
 
-Controls naming prefix and firewall rules. Defaults to `production`.
+**Required.** Controls naming prefix and deployment strategy. No default — must be explicitly set.
 
 ### `compute`
 
@@ -225,8 +275,9 @@ Supported types: `postgres`, `sqlite`.
 databases:
   postgres:
     image: pgvector/pgvector:pg17   # Optional, default: postgres:16-alpine
-    runs_on: db                     # Optional, multi-server only
 ```
+
+Databases always run on the master node for data persistence (no `runs_on` support).
 
 When postgres is configured, these env vars are auto-injected into app pods:
 `DATABASE_URL`, `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT`.
@@ -277,14 +328,17 @@ claude:
   auth_token: ${ANTHROPIC_API_KEY}
 ```
 
-### `setup`
+### `app.processes.<name>.setup`
 
-Commands run inside the app container on deploy (e.g. migrations).
+Commands run as init containers before the process starts (e.g. migrations). Defined per-process.
 
 ```yaml
-setup:
-  - bin/rails db:prepare
-  - bin/rails assets:precompile
+app:
+  processes:
+    web:
+      port: 80
+      setup:
+        - bin/rails db:prepare
 ```
 
 ### `env`

@@ -42,7 +42,7 @@ module RbrunCliTestSetup
     end
 
     def build_context(target: :production, **overrides)
-      RbrunCore::Context.new(config: build_config, target:, **overrides)
+      RbrunCore::Context.new(config: build_config(target:), **overrides)
     end
 
     def capture_output

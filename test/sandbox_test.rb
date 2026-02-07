@@ -33,17 +33,17 @@ class SandboxTest < Minitest::Test
     assert_equal "ab12cd", used_slug
   end
 
-  def test_deploy_forces_sandbox_target
-    used_target = nil
+  def test_deploy_forces_sandbox_mode
+    used_sandbox = nil
 
-    runner = mock_execute_runner { |target:, **| used_target = target }
-    sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml" })
-    sandbox.instance_variable_set(:@runner, runner)
-    sandbox.instance_variable_set(:@formatter, RbrunCli::Formatter.new(output: StringIO.new))
+    runner = mock_execute_runner { |sandbox:, **| used_sandbox = sandbox }
+    sandbox_cmd = RbrunCli::Sandbox.new([], { config: "test.yaml" })
+    sandbox_cmd.instance_variable_set(:@runner, runner)
+    sandbox_cmd.instance_variable_set(:@formatter, RbrunCli::Formatter.new(output: StringIO.new))
 
-    sandbox.deploy
+    sandbox_cmd.deploy
 
-    assert_equal :sandbox, used_target
+    assert used_sandbox, "sandbox: true should be passed"
   end
 
   # ── destroy ──
@@ -63,17 +63,17 @@ class SandboxTest < Minitest::Test
     assert_includes error_output.string, "Invalid slug format"
   end
 
-  def test_destroy_forces_sandbox_target
-    used_target = nil
+  def test_destroy_forces_sandbox_mode
+    used_sandbox = nil
 
-    runner = mock_execute_runner { |target:, **| used_target = target }
-    sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd" })
-    sandbox.instance_variable_set(:@runner, runner)
-    sandbox.instance_variable_set(:@formatter, RbrunCli::Formatter.new(output: StringIO.new))
+    runner = mock_execute_runner { |sandbox:, **| used_sandbox = sandbox }
+    sandbox_cmd = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd" })
+    sandbox_cmd.instance_variable_set(:@runner, runner)
+    sandbox_cmd.instance_variable_set(:@formatter, RbrunCli::Formatter.new(output: StringIO.new))
 
-    sandbox.destroy
+    sandbox_cmd.destroy
 
-    assert_equal :sandbox, used_target
+    assert used_sandbox, "sandbox: true should be passed"
   end
 
   # ── exec ──
@@ -137,8 +137,8 @@ class SandboxTest < Minitest::Test
   # ── sql ──
 
   def test_sql_aborts_when_no_postgres
-    config = build_config
-    ctx = RbrunCore::Context.new(config:, target: :sandbox, slug: "ab12cd")
+    config = build_config(target: :sandbox)
+    ctx = RbrunCore::Context.new(config:, slug: "ab12cd")
     ctx.server_ip = "1.2.3.4"
     ctx.ssh_private_key = TEST_SSH_KEY.private_key
 
@@ -155,9 +155,9 @@ class SandboxTest < Minitest::Test
   end
 
   def test_sql_uses_sandbox_prefix_for_pod_label
-    config = build_config
+    config = build_config(target: :sandbox)
     config.database(:postgres) { |db| db.username = "app"; db.database = "app" }
-    ctx = RbrunCore::Context.new(config:, target: :sandbox, slug: "ab12cd")
+    ctx = RbrunCore::Context.new(config:, slug: "ab12cd")
     ctx.server_ip = "1.2.3.4"
     ctx.ssh_private_key = TEST_SSH_KEY.private_key
 
