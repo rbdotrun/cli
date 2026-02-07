@@ -44,7 +44,6 @@ class RunnerTest < Minitest::Test
     with_config_file do |path, _dir|
       runner = RbrunCli::Runner.new(config_path: path)
       config = runner.load_config
-      config.git { |g| g.repo = "owner/test-repo" }
 
       compute_client = config.compute_config.client
       compute_client.define_singleton_method(:list_servers) { [] }
@@ -60,10 +59,9 @@ class RunnerTest < Minitest::Test
     with_config_file do |path, _dir|
       runner = RbrunCli::Runner.new(config_path: path)
       config = runner.load_config
-      config.git { |g| g.repo = "owner/test-repo" }
 
       server = RbrunCore::Clients::Compute::Types::Server.new(
-        name: "test-repo-production", public_ipv4: "1.2.3.4", status: "running"
+        name: "testapp-production", public_ipv4: "1.2.3.4", status: "running"
       )
       compute_client = config.compute_config.client
       compute_client.define_singleton_method(:list_servers) { [ server ] }
@@ -78,13 +76,12 @@ class RunnerTest < Minitest::Test
     with_config_file do |path, _dir|
       runner = RbrunCli::Runner.new(config_path: path)
       config = runner.load_config
-      config.git { |g| g.repo = "owner/test-repo" }
 
       worker = RbrunCore::Clients::Compute::Types::Server.new(
-        name: "test-repo-production-worker-1", public_ipv4: "5.6.7.8", status: "running"
+        name: "testapp-production-worker-1", public_ipv4: "5.6.7.8", status: "running"
       )
       master = RbrunCore::Clients::Compute::Types::Server.new(
-        name: "test-repo-production", public_ipv4: "1.2.3.4", status: "running"
+        name: "testapp-production", public_ipv4: "1.2.3.4", status: "running"
       )
       compute_client = config.compute_config.client
       compute_client.define_singleton_method(:list_servers) { [ master, worker ] }
@@ -241,10 +238,9 @@ class RunnerTest < Minitest::Test
     with_config_file do |path, _dir|
       runner = RbrunCli::Runner.new(config_path: path)
       config = runner.load_config
-      config.git { |g| g.repo = "owner/test-repo" }
 
       server = RbrunCore::Clients::Compute::Types::Server.new(
-        name: "test-repo-production", public_ipv4: "1.2.3.4", status: "running"
+        name: "testapp-production", public_ipv4: "1.2.3.4", status: "running"
       )
 
       # Stub both load_config and find_server via the runner
@@ -278,6 +274,7 @@ class RunnerTest < Minitest::Test
       Dir.mktmpdir do |dir|
         config_path = File.join(dir, "config.yaml")
         File.write(config_path, YAML.dump(
+          "name" => "testapp",
           "target" => target,
           "compute" => {
             "provider" => "hetzner",

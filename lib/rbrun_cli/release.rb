@@ -146,7 +146,7 @@ module RbrunCli
       end
 
       def build_prefix(config)
-        RbrunCore::Naming.release_prefix(config.git_config.app_name, config.target)
+        RbrunCore::Naming.release_prefix(config.name, config.target)
       end
 
       def abort_with(message)

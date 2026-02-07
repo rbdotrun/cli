@@ -152,7 +152,7 @@ module RbrunCli
         when :sandbox
           raise RbrunCore::Error::Standard, "Cannot determine prefix for sandbox without slug"
         else
-          RbrunCore::Naming.release_prefix(config.git_config.app_name, config.target)
+          RbrunCore::Naming.release_prefix(config.name, config.target)
         end
       end
 

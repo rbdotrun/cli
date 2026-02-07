@@ -20,7 +20,7 @@ class ReleaseTest < Minitest::Test
 
   def test_exec_targets_service_when_service_option
     release, kubectl = build_release_with_kubectl(service: "redis", process: "web")
-    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, [ "test-repo-production-redis", "echo hi" ])
+    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, [ "testapp-production-redis", "echo hi" ])
 
     with_captured_stdout { release.exec("echo hi") }
     kubectl.verify
@@ -28,7 +28,7 @@ class ReleaseTest < Minitest::Test
 
   def test_exec_defaults_to_web_process
     release, kubectl = build_release_with_kubectl(process: "web")
-    kubectl.expect(:exec, { output: "done", exit_code: 0 }, [ "test-repo-production-web", "rails c" ])
+    kubectl.expect(:exec, { output: "done", exit_code: 0 }, [ "testapp-production-web", "rails c" ])
 
     out = with_captured_stdout { release.exec("rails c") }
     kubectl.verify
@@ -38,7 +38,7 @@ class ReleaseTest < Minitest::Test
 
   def test_exec_output_goes_to_stdout
     release, kubectl = build_release_with_kubectl(process: "web")
-    kubectl.expect(:exec, { output: "line1\nline2", exit_code: 0 }, [ "test-repo-production-web", "ls" ])
+    kubectl.expect(:exec, { output: "line1\nline2", exit_code: 0 }, [ "testapp-production-web", "ls" ])
 
     out = with_captured_stdout { release.exec("ls") }
 
@@ -77,7 +77,7 @@ class ReleaseTest < Minitest::Test
 
   def test_status_lists_servers_by_prefix
     config = build_config
-    config.git { |g| g.repo = "owner/myapp" }
+    config.name = "myapp"
 
     matching = RbrunCore::Clients::Compute::Types::Server.new(
       name: "myapp-production", public_ipv4: "1.2.3.4", status: "running", instance_type: "cpx11"
@@ -141,7 +141,7 @@ class ReleaseTest < Minitest::Test
 
   def test_logs_non_follow_uses_kubectl
     release, kubectl = build_release_with_kubectl(process: "web", follow: false, tail: 50)
-    kubectl.expect(:logs, { output: "log output", exit_code: 0 }, [ "test-repo-production-web" ], tail: 50)
+    kubectl.expect(:logs, { output: "log output", exit_code: 0 }, [ "testapp-production-web" ], tail: 50)
 
     out = with_captured_stdout { release.logs }
     kubectl.verify
@@ -165,12 +165,12 @@ class ReleaseTest < Minitest::Test
 
     assert_includes cmd, "kubectl logs"
     assert_includes cmd, "-f"
-    assert_includes cmd, "test-repo-production-web"
+    assert_includes cmd, "testapp-production-web"
   end
 
   def test_logs_service_overrides_process
     release, kubectl = build_release_with_kubectl(service: "redis", process: "web", follow: false, tail: 100)
-    kubectl.expect(:logs, { output: "redis logs", exit_code: 0 }, [ "test-repo-production-redis" ], tail: 100)
+    kubectl.expect(:logs, { output: "redis logs", exit_code: 0 }, [ "testapp-production-redis" ], tail: 100)
 
     with_captured_stdout { release.logs }
     kubectl.verify
