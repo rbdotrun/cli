@@ -3,4 +3,9 @@
 
 require "rbrun_cli"
 
-RbrunCli::Cli.start(ARGV)
+begin
+  RbrunCli::Cli.start(ARGV)
+rescue Interrupt
+  puts "\nAborted."
+  exit 130
+end
