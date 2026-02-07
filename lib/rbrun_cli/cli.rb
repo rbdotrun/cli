@@ -27,7 +27,8 @@ module RbrunCli
       compute_inventory = config.compute_config.client.inventory
 
       cloudflare_inventory = if config.cloudflare_configured?
-        prefix = RbrunCore::Naming.release_prefix(config.git_config.app_name, :production)
+        target = config.target || :production
+        prefix = RbrunCore::Naming.release_prefix(config.git_config.app_name, target)
         config.cloudflare_config.client.inventory(domain: config.cloudflare_config.domain, prefix:)
       end
 
