@@ -64,10 +64,13 @@ module RbrunCli
         kubectl = runner.build_kubectl(ctx)
 
         cronjob_name = "#{ctx.prefix}-postgres-backup"
+        formatter.info("Starting backup...")
         job_name = kubectl.create_job_from_cronjob(cronjob_name)
 
-        formatter.success("Backup triggered: #{job_name}")
-        formatter.info("Check status with: kubectl get jobs")
+        formatter.info("Waiting for job #{job_name} to complete...")
+        kubectl.wait_for_job(job_name)
+
+        formatter.success("Backup completed successfully")
       end
     end
 
