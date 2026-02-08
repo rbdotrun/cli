@@ -190,7 +190,7 @@ class ReleaseTest < Minitest::Test
       { output: "redis logs", exit_code: 0 }
     end
 
-    out = with_captured_stdout { release.logs }
+    with_captured_stdout { release.logs }
     assert_equal "testapp-production-redis", called_with
   end
 
