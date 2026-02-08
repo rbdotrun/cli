@@ -20,29 +20,42 @@ class ReleaseTest < Minitest::Test
 
   def test_exec_targets_service_when_service_option
     release, kubectl = build_release_with_kubectl(service: "redis", process: "web")
-    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, [ "testapp-production-redis", "echo hi" ])
+    called_with = nil
+    kubectl.define_singleton_method(:exec) do |deployment, command, &block|
+      called_with = [ deployment, command ]
+      block&.call("ok")
+      { output: "ok", exit_code: 0 }
+    end
 
     with_captured_stdout { release.exec("echo hi") }
-    kubectl.verify
+    assert_equal [ "testapp-production-redis", "echo hi" ], called_with
   end
 
   def test_exec_defaults_to_web_process
     release, kubectl = build_release_with_kubectl(process: "web")
-    kubectl.expect(:exec, { output: "done", exit_code: 0 }, [ "testapp-production-web", "rails c" ])
+    called_with = nil
+    kubectl.define_singleton_method(:exec) do |deployment, command, &block|
+      called_with = [ deployment, command ]
+      block&.call("done")
+      { output: "done", exit_code: 0 }
+    end
 
     out = with_captured_stdout { release.exec("rails c") }
-    kubectl.verify
-
+    assert_equal "testapp-production-web", called_with[0]
     assert_includes out, "done"
   end
 
   def test_exec_output_goes_to_stdout
     release, kubectl = build_release_with_kubectl(process: "web")
-    kubectl.expect(:exec, { output: "line1\nline2", exit_code: 0 }, [ "testapp-production-web", "ls" ])
+    kubectl.define_singleton_method(:exec) do |deployment, command, &block|
+      block&.call("line1")
+      block&.call("line2")
+      { output: "line1\nline2", exit_code: 0 }
+    end
 
     out = with_captured_stdout { release.exec("ls") }
-
-    assert_includes out, "line1\nline2"
+    assert_includes out, "line1"
+    assert_includes out, "line2"
   end
 
   # ── sql ──
@@ -141,39 +154,44 @@ class ReleaseTest < Minitest::Test
 
   def test_logs_non_follow_uses_kubectl
     release, kubectl = build_release_with_kubectl(process: "web", follow: false, tail: 50)
-    kubectl.expect(:logs, { output: "log output", exit_code: 0 }, [ "testapp-production-web" ], tail: 50)
+    called_with = nil
+    kubectl.define_singleton_method(:logs) do |deployment, tail:, follow:, &block|
+      called_with = { deployment:, tail:, follow: }
+      block&.call("log output")
+      { output: "log output", exit_code: 0 }
+    end
 
     out = with_captured_stdout { release.logs }
-    kubectl.verify
-
+    assert_equal "testapp-production-web", called_with[:deployment]
+    assert_equal 50, called_with[:tail]
     assert_includes out, "log output"
   end
 
-  def test_logs_follow_execs_ssh
-    ctx = build_context
-    ctx.server_ip = "1.2.3.4"
-    ctx.ssh_private_key = TEST_SSH_KEY.private_key
+  def test_logs_follow_streams_via_kubectl
+    release, kubectl = build_release_with_kubectl(process: "web", follow: true, tail: 100)
+    called_with = nil
+    kubectl.define_singleton_method(:logs) do |deployment, tail:, follow:, &block|
+      called_with = { deployment:, tail:, follow: }
+      block&.call("streaming line")
+      { output: "streaming line", exit_code: 0 }
+    end
 
-    runner = Object.new
-    runner.define_singleton_method(:build_operational_context) { |**_| ctx }
-
-    release = RbrunCli::Release.new([], { config: "test.yaml", process: "web", follow: true, tail: 100 })
-    release.instance_variable_set(:@runner, runner)
-
-    exec_args = intercept_kernel_exec { release.logs }
-    cmd = exec_args.join(" ")
-
-    assert_includes cmd, "kubectl logs"
-    assert_includes cmd, "-f"
-    assert_includes cmd, "testapp-production-web"
+    out = with_captured_stdout { release.logs }
+    assert_equal true, called_with[:follow]
+    assert_includes out, "streaming line"
   end
 
   def test_logs_service_overrides_process
     release, kubectl = build_release_with_kubectl(service: "redis", process: "web", follow: false, tail: 100)
-    kubectl.expect(:logs, { output: "redis logs", exit_code: 0 }, [ "testapp-production-redis" ], tail: 100)
+    called_with = nil
+    kubectl.define_singleton_method(:logs) do |deployment, tail:, follow:, &block|
+      called_with = deployment
+      block&.call("redis logs")
+      { output: "redis logs", exit_code: 0 }
+    end
 
-    with_captured_stdout { release.logs }
-    kubectl.verify
+    out = with_captured_stdout { release.logs }
+    assert_equal "testapp-production-redis", called_with
   end
 
   # ── error handling ──
@@ -218,7 +236,7 @@ class ReleaseTest < Minitest::Test
       runner = Object.new
       runner.define_singleton_method(:build_operational_context) { |**_| ctx }
 
-      kubectl = Minitest::Mock.new
+      kubectl = Object.new
       runner.define_singleton_method(:build_kubectl) { |_| kubectl }
 
       release = RbrunCli::Release.new([], { config: "test.yaml" }.merge(opts))

@@ -53,8 +53,7 @@ module RbrunCli
           "#{ctx.prefix}-#{options[:process]}"
         end
 
-        result = kubectl.exec(deployment, command)
-        $stdout.puts result[:output]
+        kubectl.exec(deployment, command) { |line| $stdout.puts line }
       end
     end
 
@@ -100,16 +99,8 @@ module RbrunCli
           "#{ctx.prefix}-#{options[:process]}"
         end
 
-        if options[:follow]
-          key_path = File.expand_path(ctx.config.compute_config.ssh_key_path)
-          Kernel.exec("ssh", "-t", "-i", key_path, "-o", "StrictHostKeyChecking=no",
-                      "deploy@#{ctx.server_ip}",
-                      "kubectl logs -l app=#{deployment} --tail=#{options[:tail]} -f --all-containers --prefix")
-        else
-          kubectl = runner.build_kubectl(ctx)
-          result = kubectl.logs(deployment, tail: options[:tail])
-          $stdout.puts result[:output]
-        end
+        kubectl = runner.build_kubectl(ctx)
+        kubectl.logs(deployment, tail: options[:tail], follow: options[:follow]) { |line| $stdout.puts line }
       end
     end
 

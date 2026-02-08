@@ -86,15 +86,20 @@ class SandboxTest < Minitest::Test
     runner = Object.new
     runner.define_singleton_method(:build_operational_context) { |**_| ctx }
 
-    kubectl = Minitest::Mock.new
-    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, [ "rbrun-sandbox-ab12cd-web", "ls" ])
+    called_with = nil
+    kubectl = Object.new
+    kubectl.define_singleton_method(:exec) do |deployment, command, &block|
+      called_with = [ deployment, command ]
+      block&.call("ok")
+      { output: "ok", exit_code: 0 }
+    end
     runner.define_singleton_method(:build_kubectl) { |_| kubectl }
 
     sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd", process: "web" })
     sandbox.instance_variable_set(:@runner, runner)
 
     with_captured_stdout { sandbox.exec("ls") }
-    kubectl.verify
+    assert_equal [ "rbrun-sandbox-ab12cd-web", "ls" ], called_with
   end
 
   def test_exec_service_overrides_process
@@ -105,15 +110,20 @@ class SandboxTest < Minitest::Test
     runner = Object.new
     runner.define_singleton_method(:build_operational_context) { |**_| ctx }
 
-    kubectl = Minitest::Mock.new
-    kubectl.expect(:exec, { output: "ok", exit_code: 0 }, [ "rbrun-sandbox-ab12cd-redis", "ping" ])
+    called_with = nil
+    kubectl = Object.new
+    kubectl.define_singleton_method(:exec) do |deployment, command, &block|
+      called_with = [ deployment, command ]
+      block&.call("ok")
+      { output: "ok", exit_code: 0 }
+    end
     runner.define_singleton_method(:build_kubectl) { |_| kubectl }
 
     sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd", service: "redis", process: "web" })
     sandbox.instance_variable_set(:@runner, runner)
 
     with_captured_stdout { sandbox.exec("ping") }
-    kubectl.verify
+    assert_equal [ "rbrun-sandbox-ab12cd-redis", "ping" ], called_with
   end
 
   # ── ssh ──
@@ -184,20 +194,24 @@ class SandboxTest < Minitest::Test
     runner = Object.new
     runner.define_singleton_method(:build_operational_context) { |**_| ctx }
 
-    kubectl = Minitest::Mock.new
-    kubectl.expect(:logs, { output: "sandbox logs", exit_code: 0 }, [ "rbrun-sandbox-ab12cd-web" ], tail: 100)
+    called_with = nil
+    kubectl = Object.new
+    kubectl.define_singleton_method(:logs) do |deployment, tail:, follow:, &block|
+      called_with = { deployment:, tail:, follow: }
+      block&.call("sandbox logs")
+      { output: "sandbox logs", exit_code: 0 }
+    end
     runner.define_singleton_method(:build_kubectl) { |_| kubectl }
 
     sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd", process: "web", follow: false, tail: 100 })
     sandbox.instance_variable_set(:@runner, runner)
 
     out = with_captured_stdout { sandbox.logs }
-    kubectl.verify
-
+    assert_equal "rbrun-sandbox-ab12cd-web", called_with[:deployment]
     assert_includes out, "sandbox logs"
   end
 
-  def test_logs_follow_execs_ssh_with_sandbox_prefix
+  def test_logs_follow_streams_via_kubectl
     ctx = build_context(target: :sandbox, slug: "ab12cd")
     ctx.server_ip = "1.2.3.4"
     ctx.ssh_private_key = TEST_SSH_KEY.private_key
@@ -205,14 +219,21 @@ class SandboxTest < Minitest::Test
     runner = Object.new
     runner.define_singleton_method(:build_operational_context) { |**_| ctx }
 
+    called_with = nil
+    kubectl = Object.new
+    kubectl.define_singleton_method(:logs) do |deployment, tail:, follow:, &block|
+      called_with = { deployment:, tail:, follow: }
+      block&.call("streaming log")
+      { output: "streaming log", exit_code: 0 }
+    end
+    runner.define_singleton_method(:build_kubectl) { |_| kubectl }
+
     sandbox = RbrunCli::Sandbox.new([], { config: "test.yaml", slug: "ab12cd", process: "web", follow: true, tail: 50 })
     sandbox.instance_variable_set(:@runner, runner)
 
-    exec_args = intercept_kernel_exec { sandbox.logs }
-    cmd = exec_args.join(" ")
-
-    assert_includes cmd, "rbrun-sandbox-ab12cd-web"
-    assert_includes cmd, "-f"
+    out = with_captured_stdout { sandbox.logs }
+    assert_equal true, called_with[:follow]
+    assert_includes out, "streaming log"
   end
 
   # ── error handling ──

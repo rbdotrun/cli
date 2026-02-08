@@ -2,7 +2,7 @@
 
 module RbrunCli
   class Runner
-    attr_reader :formatter, :logger
+    attr_reader :formatter
 
     def initialize(config_path:, folder: nil, env_file: nil, formatter: nil, log_file: nil)
       @config_path = config_path
@@ -13,7 +13,6 @@ module RbrunCli
       else
         File.expand_path(@config_path)
       end
-      @logger = build_logger(log_file)
       load_env_file(env_file) if env_file
     end
 
@@ -35,8 +34,10 @@ module RbrunCli
       ctx = build_context(slug:, sandbox:)
       load_ssh_keys!(ctx)
 
+      step_presenter = StepPresenter.new
+
       opts = {
-        logger: @logger,
+        on_step: ->(id, status, **meta) { step_presenter.call(id, status, **meta) },
         on_state_change: ->(state) { @formatter.state_change(state) }
       }
 
@@ -50,7 +51,6 @@ module RbrunCli
       command.run
 
       @formatter.summary(ctx)
-      @logger.close
       ctx
     end
 
@@ -154,13 +154,6 @@ module RbrunCli
         else
           RbrunCore::Naming.release_prefix(config.name, config.target)
         end
-      end
-
-      def build_logger(log_file)
-        # Default: {folder}/deploy.log, override with explicit log_file
-        path = log_file || File.join(@folder || ".", "deploy.log")
-        abs_path = File.expand_path(path)
-        Logger.new(file: abs_path)
       end
   end
 end
