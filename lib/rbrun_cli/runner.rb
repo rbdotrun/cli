@@ -37,7 +37,7 @@ module RbrunCli
       step_presenter = StepPresenter.new
 
       opts = {
-        on_step: ->(id, status, **meta) { step_presenter.call(id, status, **meta) },
+        on_step: ->(id, status, message = nil) { step_presenter.call(id, status, message) },
         on_state_change: ->(state) { @formatter.state_change(state) }
       }
 

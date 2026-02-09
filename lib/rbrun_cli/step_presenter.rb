@@ -10,7 +10,7 @@ module RbrunCli
       @current_label = nil
     end
 
-    def call(label, status, message = nil, parent: nil)
+    def call(label, status, message = nil)
       if STREAM_LABELS.include?(label)
         handle_stream(label, status)
       else
