@@ -17,6 +17,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "rbrun-core", "~> 0.1"
   s.add_dependency "thor", "~> 1.0"
+  s.add_dependency "tty-spinner", "~> 0.9"
   s.add_dependency "zeitwerk", "~> 2.6"
   s.metadata["rubygems_mfa_required"] = "true"
 end
