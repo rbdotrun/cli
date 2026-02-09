@@ -159,6 +159,11 @@ module RbrunCli
       rescue RbrunCore::Error::Standard => e
         formatter.error(e.message)
         exit 1
+      rescue StandardError => e
+        location = e.backtrace&.find { |l| l.include?("rbrun") }&.sub(/.*gems\//, "")
+        formatter.error("#{e.class}: #{e.message}")
+        formatter.error("  at #{location}") if location
+        exit 1
       end
   end
 end
