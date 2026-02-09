@@ -12,6 +12,7 @@ module RbrunCli
       @output = output
       @tty = output.respond_to?(:tty?) && output.tty?
       @spinners = {}
+      @has_message = {}
     end
 
     def call(label, status, message = nil)
@@ -46,10 +47,11 @@ module RbrunCli
 
       def start_spinner(label, message)
         padded = label.to_s.ljust(LABEL_WIDTH)
+        @has_message[label] = !message.nil?
         format = "#{INDENT}#{padded} :spinner #{message || ''}"
 
         if @tty
-          spinner = TTY::Spinner.new(format, output: @output, format: :dots)
+          spinner = TTY::Spinner.new(format.rstrip, output: @output, format: :dots)
           @spinners[label] = spinner
           spinner.auto_spin
         else
@@ -60,12 +62,17 @@ module RbrunCli
 
       def stop_spinner(label, message)
         padded = label.to_s.ljust(LABEL_WIDTH)
-        done_text = message || "done"
 
         if @tty && @spinners[label]
-          @spinners[label].success(done_text)
+          if @has_message[label]
+            @spinners[label].success
+          else
+            @spinners[label].success(message || "done")
+          end
           @spinners.delete(label)
+          @has_message.delete(label)
         else
+          done_text = message || "done"
           @output.puts "#{INDENT}#{padded} #{done_text}"
         end
       end
@@ -73,6 +80,7 @@ module RbrunCli
       def stop_all_spinners
         @spinners.each_value(&:stop)
         @spinners.clear
+        @has_message.clear
       end
   end
 end
