@@ -51,6 +51,38 @@ module RbrunCli
       end
     end
 
+    desc "download BACKUP_KEY LOCAL_PATH", "Download a backup from R2 to local file"
+    option :decompress, type: :boolean, default: true, desc: "Decompress .gz files"
+    def download(backup_key, local_path)
+      with_error_handling do
+        config = runner.load_config
+
+        unless config.cloudflare_configured?
+          abort_with("Cloudflare not configured - backups require cloudflare config")
+        end
+
+        cf_config = config.cloudflare_config
+        r2 = RbrunCore::Clients::CloudflareR2.new(
+          api_token: cf_config.api_token,
+          account_id: cf_config.account_id
+        )
+
+        bucket_name = RbrunCore::Naming.backend_bucket(config.name, config.target)
+
+        formatter.info("Downloading #{backup_key} from #{bucket_name}...")
+        content = r2.download_file(bucket: bucket_name, key: backup_key)
+
+        if options[:decompress] && backup_key.end_with?(".gz")
+          require "zlib"
+          formatter.info("Decompressing...")
+          content = Zlib.gunzip(content)
+        end
+
+        File.binwrite(local_path, content)
+        formatter.success("Downloaded to #{local_path} (#{format_size(content.bytesize)})")
+      end
+    end
+
     desc "now", "Trigger immediate backup"
     def now
       with_error_handling do
@@ -92,6 +124,16 @@ module RbrunCli
       def abort_with(message)
         formatter.error(message)
         exit 1
+      end
+
+      def format_size(bytes)
+        if bytes >= 1_000_000
+          "#{(bytes / 1_000_000.0).round(1)} MB"
+        elsif bytes >= 1_000
+          "#{(bytes / 1_000.0).round(1)} KB"
+        else
+          "#{bytes} bytes"
+        end
       end
 
       def with_error_handling
